@@ -7,22 +7,28 @@ import GitRepoArchiver from './GitRepoArchiver.js';
 const __dirname = path.dirname(new URL(import.meta.url).pathname);
 
 const REPOSITORY = "https://github.com/arduino/arduino-modulino-mpy"
-const CUSTOM_PACKAGE_JSON = {
-  "urls": [
-    ["modulino/__init__.py", "github:arduino/modulino-mpy/src/modulino/__init__.py"],
-    ["modulino/buttons.py", "github:arduino/modulino-mpy/src/modulino/buttons.py"]
-  ],
-  "version": "1.0.0"
-}
+// const CUSTOM_PACKAGE_JSON = {
+//   "urls": [
+//     ["modulino/__init__.py", "github:arduino/modulino-mpy/src/modulino/__init__.py"],
+//     ["modulino/buttons.py", "github:arduino/modulino-mpy/src/modulino/buttons.py"]
+//   ],
+//   "version": "1.0.0"
+// }
+const CUSTOM_PACKAGE_JSON = null;
 
 const DEFAULT_PORT = '/dev/cu.usbmodem1234561'
 
 async function main() {
+  // Read repository and port from command line arguments
+  const args = process.argv.slice(2);
+  const repository = args[0] || REPOSITORY;
+  const port = args[1] || DEFAULT_PORT;
+
   let sourceFile, targetFile, board;
 
   try {
-    console.log(`🔧 Creating archive from ${REPOSITORY}...`);
-    sourceFile = await getArchiveFromRepository(REPOSITORY, CUSTOM_PACKAGE_JSON);
+    console.log(`🔧 Creating archive from ${repository}...`);
+    sourceFile = await getArchiveFromRepository(repository, CUSTOM_PACKAGE_JSON);
     console.log(`✅ Archive created: ${sourceFile}`);
   } catch (error) {
     console.error(`❌ Couldn't create archive: ${error.message}`);
@@ -31,7 +37,6 @@ async function main() {
   
   try {
     targetFile = path.basename(sourceFile);
-    const port = process.env.PORT || DEFAULT_PORT;
     board = new MicroPythonBoard()
     await board.open(port)
     await uploadArchive(board, sourceFile, targetFile);
@@ -99,13 +104,16 @@ async function extractArchiveOnBoard(board, archiveFileName) {
 }
 
 async function uploadArchive(board, sourceFile, targetFile) {
-  console.log('⬆️ Sending file to board...');
-  await board.fs_put(sourceFile, targetFile, console.log);
+  process.stdout.write('📤 Uploading file to board');
+  await board.fs_put(sourceFile, targetFile, (output) => {
+    process.stdout.write(".");
+  });
+  process.stdout.write("\n");
 }
 
 async function cleanUp(board, remoteFile, localFile) {
-  console.log('🧹 Cleaning up archive file on board...');
-  await board.fs_rm(remoteFile);
   console.log('🧹 Cleaning up local archive file...');
   fs.removeSync(localFile);
+  console.log('🧹 Cleaning up archive file on board...');
+  await board.fs_rm(remoteFile);
 }

@@ -78,18 +78,16 @@ class GitRepoArchiver {
     try {
       let packageJson;
       if (customPackageJson) {
-        console.log('Using custom package.json...');
         packageJson = customPackageJson;
       } else {
-        console.log('Fetching package.json...');
+        console.log('🌐 Fetching package.json...');
         packageJson = await this.fetchPackageJson();
       }
 
       // Create a temporary directory for downloaded files
       this.outputDir = await fs.mkdtemp(path.join(os.tmpdir(), 'downloaded_files-'));
-      console.log(`Temporary directory created at: ${this.outputDir}`);
 
-      console.log('Downloading files...');
+      console.log('🌐 Downloading files from repository...');
       const downloadPromises = packageJson.urls.map(entry => this.downloadFile(entry));
       await Promise.all(downloadPromises);
 
@@ -101,15 +99,11 @@ class GitRepoArchiver {
       // Ensure the output directory exists
       await fs.ensureDir(targetDirectory);
 
-      console.log('Creating tar.gz archive...');
+      console.log('📁 Creating tar.gz archive...');
       await this.createTarGzArchive(tarGzPath);
-
-      console.log(`Process completed successfully! Archive created: ${tarGzPath}`);
 
       // Clean up: Remove the temporary directory
       await fs.remove(this.outputDir);
-
-      console.log('Temporary files cleaned up.');
 
       // Return the file path
       return tarGzPath;
