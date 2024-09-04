@@ -7,6 +7,8 @@ import { promisify } from 'util';
 
 const pipe = promisify(pipeline);
 
+// SEE: https://github.com/micropython/micropython/blob/master/tools/mpremote/mpremote/mip.py
+
 class GitRepoArchiver {
   constructor(repoUrl) {
     this.repoUrl = repoUrl;
