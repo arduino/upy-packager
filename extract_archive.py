@@ -34,37 +34,37 @@ def untar(file_path, target_dir = "lib", cleanup = True):
     else:
         uncompressed_file = file_path
     
-    archive = TarFile(uncompressed_file)
+    try:
+        with TarFile(uncompressed_file) as archive:
+            for entry in archive:
+                entry_name = entry.name
+                entry_type = entry.type
 
-    for entry in archive:
-        entry_name = entry.name
-        entry_type = entry.type
+                # Skip . and ./ directories
+                if entry_type == DIRTYPE and (entry_name == "." or entry_name == "./"):
+                    continue
 
-        # Skip . and ./ directories
-        if entry_type == DIRTYPE and (entry_name == "." or entry_name == "./"):
-            continue
+                # Strip leading "./" or "/"
+                if entry_name.startswith("./"):
+                    entry_name = entry_name[2:]
+                if entry_name.startswith("/"):
+                    entry_name = entry_name[1:]
 
-        # Strip leading "./" or "/"
-        if entry_name.startswith("./"):
-            entry_name = entry_name[2:]
-        if entry_name.startswith("/"):
-            entry_name = entry_name[1:]
+                # Prepend target directory
+                entry_name = target_dir + "/" + entry_name
 
-        # Prepend target directory
-        entry_name = target_dir + "/" + entry_name
-
-        if entry_type == DIRTYPE:
-            # Strip trailing slash
-            if entry_name.endswith("/"):
-                entry_name = entry_name[:-1]
-            print("Creating directory", entry_name)
-            os.mkdir(entry_name)
-        else:
-            print("Extracting file", entry_name)
-            f = archive.extractfile(entry)
-            with open(entry_name, "wb") as of:
-                of.write(f.read())
-            
-    archive.close()
-    if cleanup:
-        os.remove(uncompressed_file)
+                if entry_type == DIRTYPE:
+                    # Strip trailing slash
+                    if entry_name.endswith("/"):
+                        entry_name = entry_name[:-1]
+                    print("Creating directory", entry_name)
+                    os.mkdir(entry_name)
+                else:
+                    print("Extracting file", entry_name)
+                    f = archive.extractfile(entry)
+                    with open(entry_name, "wb") as of:
+                        of.write(f.read())
+        print("Extraction complete")
+    finally:
+        if cleanup:
+            os.remove(uncompressed_file)            

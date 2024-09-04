@@ -18,7 +18,7 @@ const CUSTOM_PACKAGE_JSON = {
 const DEFAULT_PORT = '/dev/cu.usbmodem1234561'
 
 async function main() {
-  let sourceFile, board;
+  let sourceFile, targetFile, board;
 
   try {
     console.log(`🔧 Creating archive from ${REPOSITORY}...`);
@@ -30,16 +30,16 @@ async function main() {
   }
   
   try {
-    const targetFile = path.basename(sourceFile);
+    targetFile = path.basename(sourceFile);
     const port = process.env.PORT || DEFAULT_PORT;
     board = new MicroPythonBoard()
     await board.open(port)
     await uploadArchive(board, sourceFile, targetFile);
     await extractArchiveOnBoard(board, targetFile);
-    await cleanUp(board, targetFile, sourceFile);
   } catch (error) {
     console.error(`❌ Couldn't upload package: ${error.message}`);
   } finally {
+    await cleanUp(board, targetFile, sourceFile);
     await board.close();    
     console.log('✅ Done');
   }
@@ -93,7 +93,7 @@ async function extractArchiveOnBoard(board, archiveFileName) {
     throw new Error('Failed to extract archive because file(s) already exists');
   }
 
-  if (output !== '') {
+  if (!output.includes('Extraction complete')) {
     throw new Error('Failed to extract archive' + output);
   }
 }
