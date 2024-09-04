@@ -15,6 +15,7 @@
     "cors": "^2.8.5",
     "express": "^4.19.2",
     "fs-extra": "^11.2.0",
+    "micropython.js": "github:arduino/micropython.js",
     "tar": "^7.4.3"
   }
 }
