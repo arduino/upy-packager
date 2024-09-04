@@ -72,7 +72,7 @@ class GitRepoArchiver {
     return this.repoUrl.split('/').slice(-1)[0].replace('.git', '');
   }
 
-  async archiveRepo() {
+  async archiveRepo(outputDirectory = 'out') {
     try {
       console.log('Fetching package.json...');
       const packageJson = await this.fetchPackageJson();
@@ -88,11 +88,10 @@ class GitRepoArchiver {
       const packageName = packageJson.name || this.getRepoName();
       const version = packageJson.version || '1.0.0';
       const tarGzFileName = `${packageName}-${version}.tar.gz`;
-      const outDir = path.resolve('./out');
-      const tarGzPath = path.join(outDir, tarGzFileName);
+      const tarGzPath = path.join(outputDirectory, tarGzFileName);
 
-      // Ensure the out directory exists
-      await fs.ensureDir(outDir);
+      // Ensure the output directory exists
+      await fs.ensureDir(outputDirectory);
 
       console.log('Creating tar.gz archive...');
       await this.createTarGzArchive(tarGzPath);
@@ -103,8 +102,12 @@ class GitRepoArchiver {
       await fs.remove(this.outputDir);
 
       console.log('Temporary files cleaned up.');
+
+      // Return the filename
+      return tarGzFileName;
     } catch (error) {
       console.error('Error:', error.message);
+      throw error; // Re-throw error to handle it in the server
     }
   }
 }
