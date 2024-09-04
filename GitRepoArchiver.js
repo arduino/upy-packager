@@ -72,10 +72,16 @@ class GitRepoArchiver {
     return this.repoUrl.split('/').slice(-1)[0].replace('.git', '');
   }
 
-  async archiveRepo(outputDirectory = 'out') {
+  async archiveRepo(customPackageJson = null, outputDirectory = 'out') {
     try {
-      console.log('Fetching package.json...');
-      const packageJson = await this.fetchPackageJson();
+      let packageJson;
+      if (customPackageJson) {
+        console.log('Using custom package.json...');
+        packageJson = customPackageJson;
+      } else {
+        console.log('Fetching package.json...');
+        packageJson = await this.fetchPackageJson();
+      }
 
       // Create a temporary directory for downloaded files
       this.outputDir = await fs.mkdtemp(path.join(os.tmpdir(), 'downloaded_files-'));
