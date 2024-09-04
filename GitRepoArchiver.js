@@ -60,7 +60,8 @@ class GitRepoArchiver {
   async createTarGzArchive(tarGzPath) {
     const tarStream = tar.c(
       {
-        gzip: true,
+        // Make gzip use highest compression level
+        gzip: { level: 9 },
         cwd: this.outputDir,
       },
       ['.']
