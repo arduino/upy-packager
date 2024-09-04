@@ -2,7 +2,6 @@ import MicroPythonBoard from 'micropython.js';
 import fs from 'fs-extra';
 import path from 'path';
 import GitRepoArchiver from './GitRepoArchiver.js';
-import { r } from 'tar';
 
 // Define __dirname for ES6 modules
 const __dirname = path.dirname(new URL(import.meta.url).pathname);
@@ -20,7 +19,7 @@ const DEFAULT_PORT = '/dev/cu.usbmodem1234561'
 
 async function main() {
   let sourceFile, board;
-  
+
   try {
     console.log(`🔧 Creating archive from ${REPOSITORY}...`);
     sourceFile = await getArchiveFromRepository(REPOSITORY, CUSTOM_PACKAGE_JSON);
@@ -36,7 +35,7 @@ async function main() {
     board = new MicroPythonBoard()
     await board.open(port)
     await uploadArchive(board, sourceFile, targetFile);
-    await extractArchiveOnBoard(board, targetFile, false);
+    await extractArchiveOnBoard(board, targetFile);
     await cleanUp(board, targetFile, sourceFile);
   } catch (error) {
     console.error(`❌ Couldn't upload package: ${error.message}`);
@@ -53,39 +52,48 @@ async function getArchiveFromRepository(repoUrl, customPackageJson = null) {
   return await archiver.archiveRepo(customPackageJson);
 }
 
-async function extractArchiveOnBoard(board, archiveFileName, loadTarfileLib = true) {
+function extractREPLMessage(out) {
+  /*
+   * Message ($msg) will come out following this template:
+   * "OK${msg}\x04${err}\x04>"
+   */
+  return out.slice(2, -3)
+}
+
+async function extractArchiveOnBoard(board, archiveFileName) {
   const extractScriptFilePath = path.join(__dirname, 'extract_archive.py');
   const tarfileLibFilePath = path.join(__dirname, 'tarfile.py');
 
   console.log('📦 Extracting archive...')
   let output;
 
-  if(loadTarfileLib) {
-    output = await board.execfile(tarfileLibFilePath);
-    if (output.slice(0, 2) !== 'OK') {
+  await board.enter_raw_repl()
+  output = extractREPLMessage(await board.exec_raw('from tarfile import TarFile, DIRTYPE'))
+  await board.exit_raw_repl()
+  
+  // Load tarfile.py if not installed on the board
+  if(output.includes('ImportError')) {
+    output = extractREPLMessage(await board.execfile(tarfileLibFilePath));
+    if (output !== '') {
       throw new Error('Failed to load tarfile.py. Output: ' + output);
-    }
-  } else {
-    await board.enter_raw_repl()
-    output = await board.exec_raw('from tarfile import TarFile, DIRTYPE')
-    await board.exit_raw_repl()
-    if (output.slice(0, 2) !== 'OK') {
-      throw new Error('Failed to import tarfile. Output: ' + output);
     }
   }
 
-  output = await board.execfile(extractScriptFilePath);
-  // Fail if first two characters are not OK
-  if (output.slice(0, 2) !== 'OK') {
+  output = extractREPLMessage(await board.execfile(extractScriptFilePath));
+  if (output !== '') {
     throw new Error('Failed to import extract_archive.py. Output: ' + output);
   }
   
   await board.enter_raw_repl()
   const command = `untar('${archiveFileName}')`;
-  output = await board.exec_raw(command)
+  output = extractREPLMessage(await board.exec_raw(command))
   await board.exit_raw_repl()
 
-  if (output.slice(0, 2) !== 'OK') {
+  if(output.includes('[Errno 17] EEXIST')) {
+    throw new Error('Failed to extract archive because file(s) already exists');
+  }
+
+  if (output !== '') {
     throw new Error('Failed to extract archive' + output);
   }
 }
