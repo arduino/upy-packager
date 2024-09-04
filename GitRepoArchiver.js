@@ -94,8 +94,8 @@ class GitRepoArchiver {
       await Promise.all(downloadPromises);
 
       const packageName = packageJson.name || this.getRepoName();
-      const version = packageJson.version || '1.0.0';
-      const tarGzFileName = `${packageName}-${version}.tar.gz`;
+      const version = packageJson.version;
+      const tarGzFileName = version ? `${packageName}-${version}.tar.gz` : `${packageName}.tar.gz`;
       const tarGzPath = path.join(targetDirectory, tarGzFileName);
 
       // Ensure the output directory exists
