@@ -74,7 +74,7 @@ class GitRepoArchiver {
     return this.repoUrl.split('/').slice(-1)[0].replace('.git', '');
   }
 
-  async archiveRepo(customPackageJson = null, outputDirectory = 'out') {
+  async archiveRepo(customPackageJson = null, targetDirectory = 'out') {
     try {
       let packageJson;
       if (customPackageJson) {
@@ -96,10 +96,10 @@ class GitRepoArchiver {
       const packageName = packageJson.name || this.getRepoName();
       const version = packageJson.version || '1.0.0';
       const tarGzFileName = `${packageName}-${version}.tar.gz`;
-      const tarGzPath = path.join(outputDirectory, tarGzFileName);
+      const tarGzPath = path.join(targetDirectory, tarGzFileName);
 
       // Ensure the output directory exists
-      await fs.ensureDir(outputDirectory);
+      await fs.ensureDir(targetDirectory);
 
       console.log('Creating tar.gz archive...');
       await this.createTarGzArchive(tarGzPath);
@@ -111,8 +111,8 @@ class GitRepoArchiver {
 
       console.log('Temporary files cleaned up.');
 
-      // Return the filename
-      return tarGzFileName;
+      // Return the file path
+      return tarGzPath;
     } catch (error) {
       console.error('Error:', error.message);
       throw error; // Re-throw error to handle it in the server

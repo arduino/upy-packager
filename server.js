@@ -32,22 +32,22 @@ async function handleArchiveRequest(res, repoUrl, customPackageJson = null) {
       await fs.ensureDir(tempDir);
   
       // Archive the repository and get the filename
-      const tarGzFileName = await archiver.archiveRepo(customPackageJson);
-  
+      const tarGzFilePath = await archiver.archiveRepo(customPackageJson);
+      const tarGzFileName = path.basename(tarGzFilePath);
+
       // Move the .tar.gz file from 'out' to temp directory for download
-      const tarGzPath = path.join(tempDir, tarGzFileName);
-      const outPath = path.resolve('out', tarGzFileName);
-      await fs.move(outPath, tarGzPath);
+      const downloadFilePath = path.join(tempDir, tarGzFileName);
+      await fs.move(tarGzFilePath, downloadFilePath);
   
       // Serve the .tar.gz file for download
-      res.download(tarGzPath, tarGzFileName, (err) => {
+      res.download(downloadFilePath, tarGzFileName, (err) => {
         if (err) {
           console.error('Error serving file:', err.message);
           res.status(500).send('Error serving file');
         }
   
         // Clean up: Remove the temporary file after download
-        fs.remove(tarGzPath)
+        fs.remove(downloadFilePath)
           .catch(err => console.error('Error cleaning up file:', err.message));
       });
     } catch (error) {
