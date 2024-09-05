@@ -2,6 +2,7 @@ import MicroPythonBoard from 'micropython.js';
 import fs from 'fs-extra';
 import path from 'path';
 import GitRepoArchiver from './GitRepoArchiver.js';
+import crypto from 'crypto';
 
 // Define __dirname for ES6 modules
 const __dirname = path.dirname(new URL(import.meta.url).pathname);
@@ -40,6 +41,10 @@ async function main() {
     board = new MicroPythonBoard()
     await board.open(port)
     await uploadArchive(board, sourceFile, targetFile);
+    console.log('🔍 Verifying hash...');
+    if(!await verifyHash(board, sourceFile, targetFile)) {
+      throw new Error('❌ Hash mismatch');
+    }
     await extractArchiveOnBoard(board, targetFile);
   } catch (error) {
     console.error(`❌ Couldn't upload package: ${error.message}`);
@@ -56,6 +61,43 @@ async function getArchiveFromRepository(repoUrl, customPackageJson = null) {
   const archiver = new GitRepoArchiver(repoUrl);
   return await archiver.archiveRepo(customPackageJson);
 }
+
+async function calculateHash(filePath) {
+  const hash = crypto.createHash('sha256');
+  const input = fs.createReadStream(filePath);
+  return new Promise((resolve, reject) => {
+    input.on('data', chunk => hash.update(chunk));
+    input.on('end', () => resolve(hash.digest('hex')));
+    input.on('error', reject);
+  });
+}
+
+async function verifyHash(board, filePath, targetFile) {
+  const localFileHash = await calculateHash(filePath);
+  // TODO: Possibly read file in chunks
+  const pythonCommand = `
+from hashlib import sha256
+from binascii import hexlify
+
+hash = sha256()
+
+with open('${targetFile}', 'rb') as f:    
+    data = f.read()
+    hash.update(data)
+
+digest_hex = hexlify(hash.digest())
+
+if digest_hex == b'${localFileHash}':
+  print('Hash OK')
+else:
+  print('Hash mismatch')
+`;
+  await board.enter_raw_repl()
+  const output = await board.exec_raw(pythonCommand)
+  await board.exit_raw_repl()
+  return output.includes('Hash OK');
+}
+
 
 function extractREPLMessage(out) {
   /*
