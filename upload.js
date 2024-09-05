@@ -72,30 +72,32 @@ async function calculateHash(filePath) {
   });
 }
 
+/**
+ * 
+ * @param {MicroPythonBoard} board 
+ * @param {string} filePath 
+ * @param {Object} templateParameters Template parameters to be replaced in the Python script
+ * They are denoted by ${paramName} in the script. The key in the object should be paramName.
+ */
+async function executePythonFile(board, filePath, templateParameters) {
+  let script = fs.readFileSync(filePath, 'utf-8');
+  for (const [key, value] of Object.entries(templateParameters)) {
+    // Replace all occurrences of the template parameter
+    script = script.replace(new RegExp('\\${\s*' + key + '\s*}', 'g'), value);
+  }
+  await board.enter_raw_repl()
+  const output = await board.exec_raw(script);
+  await board.exit_raw_repl()
+  return output;
+}
+  
+
+
 async function verifyHash(board, filePath, targetFile) {
   const localFileHash = await calculateHash(filePath);
-  // TODO: Possibly read file in chunks
-  const pythonCommand = `
-from hashlib import sha256
-from binascii import hexlify
-
-hash = sha256()
-
-with open('${targetFile}', 'rb') as f:    
-    data = f.read()
-    hash.update(data)
-
-digest_hex = hexlify(hash.digest())
-
-if digest_hex == b'${localFileHash}':
-  print('Hash OK')
-else:
-  print('Hash mismatch')
-`;
-  await board.enter_raw_repl()
-  const output = await board.exec_raw(pythonCommand)
-  await board.exit_raw_repl()
-  return output.includes('Hash OK');
+  const templateParameters = { 'localFileHash': localFileHash, 'targetFile': targetFile };
+  const output = await executePythonFile(board, path.join(__dirname, "logic", "python", 'validate_hash.py'), templateParameters);
+  return extractREPLMessage(output).includes('Hash OK');
 }
 
 
