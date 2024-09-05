@@ -1,7 +1,7 @@
 import MicroPythonBoard from 'micropython.js';
 import fs from 'fs-extra';
 import path from 'path';
-import RepositoryArchiver from './logic/repository-archiver.js';
+import { RepositoryArchiver} from './logic/repository-archiver.js';
 import crypto from 'crypto';
 import { extractREPLMessage, executePythonFile } from './logic/micropython-extensions.js';
 

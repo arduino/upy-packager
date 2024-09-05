@@ -164,4 +164,4 @@ class RepositoryArchiver {
   }
 }
 
-export default RepositoryArchiver;
+export { RepositoryArchiver };
