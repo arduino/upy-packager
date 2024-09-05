@@ -17,15 +17,13 @@ def decompress_file(file_path):
         compressed_data = f.read()
         data = decompress_data(compressed_data)
         
-        # Write contents to a tar file
-        target_file = file_path.replace('.gz', '')
-        with open(target_file, 'wb') as g:
+        tar_file = file_path.replace('.gz', '')
+        with open(tar_file, 'wb') as g:
             g.write(data)
 
-        return target_file
+        return tar_file
 
 def untar(file_path, target_dir = "lib", cleanup = True):
-    # Ensure target_dir exists
     if not file_or_dir_exists(target_dir):
         raise Exception(f"{target_dir} directory does not exist")
 
