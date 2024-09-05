@@ -147,10 +147,13 @@ async function extractArchiveOnBoard(board, archiveFileName) {
 
 async function uploadArchive(board, sourceFile, targetFile) {
   process.stdout.write('📤 Uploading file to board');
+  const start = Date.now();
   await board.fs_put(sourceFile, targetFile, (output) => {
     process.stdout.write(".");
   });
+  const end = Date.now();
   process.stdout.write("\n");
+  console.log(`🕒 Upload completed in ${(end - start)/1000} s`);
 }
 
 async function cleanUp(board, remoteFile, localFile) {
