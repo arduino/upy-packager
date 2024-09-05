@@ -3,19 +3,20 @@ import fs from 'fs-extra';
 import path from 'path';
 import RepositoryArchiver from './logic/repository-archiver.js';
 import crypto from 'crypto';
+import { extractREPLMessage, executePythonFile } from './logic/micropython-extensions.js';
 
 // Define __dirname for ES6 modules
 const __dirname = path.dirname(new URL(import.meta.url).pathname);
 
 const REPOSITORY = "https://github.com/arduino/arduino-modulino-mpy"
-// const CUSTOM_PACKAGE_JSON = {
-//   "urls": [
-//     ["modulino/__init__.py", "github:arduino/modulino-mpy/src/modulino/__init__.py"],
-//     ["modulino/buttons.py", "github:arduino/modulino-mpy/src/modulino/buttons.py"]
-//   ],
-//   "version": "1.0.0"
-// }
-const CUSTOM_PACKAGE_JSON = null;
+const CUSTOM_PACKAGE_JSON = {
+  "urls": [
+    ["modulino/__init__.py", "github:arduino/modulino-mpy/src/modulino/__init__.py"],
+    ["modulino/buttons.py", "github:arduino/modulino-mpy/src/modulino/buttons.py"]
+  ],
+  "version": "1.0.0"
+}
+// const CUSTOM_PACKAGE_JSON = null;
 
 const DEFAULT_PORT = '/dev/cu.usbmodem1234561'
 
@@ -71,28 +72,7 @@ async function calculateHash(filePath) {
     input.on('error', reject);
   });
 }
-
-/**
- * 
- * @param {MicroPythonBoard} board 
- * @param {string} filePath 
- * @param {Object} templateParameters Template parameters to be replaced in the Python script
- * They are denoted by ${paramName} in the script. The key in the object should be paramName.
- */
-async function executePythonFile(board, filePath, templateParameters) {
-  let script = fs.readFileSync(filePath, 'utf-8');
-  for (const [key, value] of Object.entries(templateParameters)) {
-    // Replace all occurrences of the template parameter
-    script = script.replace(new RegExp('\\${\s*' + key + '\s*}', 'g'), value);
-  }
-  await board.enter_raw_repl()
-  const output = await board.exec_raw(script);
-  await board.exit_raw_repl()
-  return output;
-}
   
-
-
 async function verifyHash(board, filePath, targetFile) {
   const localFileHash = await calculateHash(filePath);
   const templateParameters = { 'localFileHash': localFileHash, 'targetFile': targetFile };
@@ -100,14 +80,6 @@ async function verifyHash(board, filePath, targetFile) {
   return extractREPLMessage(output).includes('Hash OK');
 }
 
-
-function extractREPLMessage(out) {
-  /*
-   * Message ($msg) will come out following this template:
-   * "OK${msg}\x04${err}\x04>"
-   */
-  return out.slice(2, -3)
-}
 
 async function extractArchiveOnBoard(board, archiveFileName) {
   const extractScriptFilePath = path.join(__dirname, 'extract_archive.py');
