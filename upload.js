@@ -1,7 +1,7 @@
 import MicroPythonBoard from 'micropython.js';
 import fs from 'fs-extra';
 import path from 'path';
-import GitRepoArchiver from './GitRepoArchiver.js';
+import RepositoryArchiver from './logic/repository-archiver.js';
 import crypto from 'crypto';
 
 // Define __dirname for ES6 modules
@@ -58,8 +58,8 @@ async function main() {
 main()
 
 async function getArchiveFromRepository(repoUrl, customPackageJson = null) {
-  const archiver = new GitRepoArchiver(repoUrl);
-  return await archiver.archiveRepo(customPackageJson);
+  const archiver = new RepositoryArchiver(repoUrl);
+  return await archiver.archiveRepository(customPackageJson);
 }
 
 async function calculateHash(filePath) {
