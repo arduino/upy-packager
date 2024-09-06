@@ -27,8 +27,12 @@ async function main() {
   }
 
   const packager = new Packager(port);
-  await packager.packageAndInstall(repository, customPackageJson);
-  console.debug('✅ Done');
+  try {
+    await packager.packageAndInstall(repository, customPackageJson);
+    console.debug('✅ Done');
+  } catch (error) {
+    console.error(error.message);
+  }
 }
 
 main()

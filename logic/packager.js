@@ -1,7 +1,7 @@
 import MicroPythonBoard from 'micropython.js';
 import path from 'path';
 import fs from 'fs-extra';
-import { RepositoryArchiver} from './repository-archiver.js';
+import { RepositoryArchiver } from './repository-archiver.js';
 import { PackageInstaller } from './package-installer.js';
 import { MPyCrossCompiler } from './mpy-cross-compiler.js';
 
@@ -35,9 +35,8 @@ class Packager {
             sourceFilePath = await archiver.archiveRepository(customPackageJson, null, downloadedFileCallback);
             console.debug(`✅ Archive created: ${sourceFilePath}`);
         } catch (error) {
-            console.error(`❌ Couldn't create archive: ${error.message}`);
             await board.close();
-            return;
+            throw new Error(`❌ Couldn't create archive: ${error.message}`);
         }
 
         try {
@@ -49,12 +48,12 @@ class Packager {
             });
             await packageInstaller.extractArchiveOnBoard(targetFilePath);
         } catch (error) {
-            console.error(`❌ Couldn't install package: ${error.message}`);
+            throw new Error(`❌ Couldn't install package: ${error.message}`);
         } finally {
             await packageInstaller.cleanUp(targetFilePath);
             console.debug('🧹 Cleaning up local archive file...');
             fs.removeSync(sourceFilePath);
-            await board.close();            
+            await board.close();
         }
     }
 }
