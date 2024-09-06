@@ -2,11 +2,17 @@ import crypto from 'crypto';
 import path from 'path';
 import fs from 'fs';
 import { extractREPLMessage, executePythonFile } from './micropython-extensions.js';
+import MicroPythonBoard from 'micropython.js';
 
 // Define __dirname for ES6 modules
 const __dirname = path.dirname(new URL(import.meta.url).pathname);
 
 class PackageInstaller {
+    /**
+     * Constructs a new PackageInstaller instance
+     * @param {MicroPythonBoard} board The MicroPython board instance to use.
+     * This class assumes that the board's port is already open.
+     */
     constructor(board) {
         this.board = board;
     }
@@ -45,21 +51,25 @@ class PackageInstaller {
      * @param {string} sourceFilePath The local file path
      * @param {string} targetFilePath The file path on the board. 
      * Defaults to the file name taken from the source file path
+     * @param {function} onProgress An optional callback function to track the upload progress.
+     * The callback takes an integer argument representing the percentage of the upload progress.
      */
-    async uploadArchive(sourceFilePath, targetFilePath = null) {
+    async uploadArchive(sourceFilePath, targetFilePath = null, onProgress = null) {
         if(targetFilePath === null) {
             targetFilePath = path.basename(sourceFilePath);
         }
-        process.stdout.write('📤 Uploading file to board');
+        
         const start = Date.now();
         await this.board.fs_put(sourceFilePath, targetFilePath, (output) => {
-          process.stdout.write(".");
+          if(onProgress) {
+            onProgress(parseInt(output.replace('%', '')));
+          }
         });
         const end = Date.now();
         process.stdout.write("\n");
-        console.log(`🕒 Upload completed in ${(end - start)/1000} s`);
+        console.debug(`🕒 Upload completed in ${(end - start)/1000} s`);
 
-        console.log('🔍 Verifying hash...');
+        console.debug('🔍 Verifying hash...');
         if(!await this.verifyHash(sourceFilePath, targetFilePath)) {
           throw new Error('❌ Hash mismatch');
         }
@@ -73,7 +83,7 @@ class PackageInstaller {
         const extractScriptFilePath = path.join(__dirname, "python", 'extract_archive.py');
         const tarfileLibFilePath = path.join(__dirname, "python", 'tarfile.py');
       
-        console.log('📦 Extracting archive...')
+        console.debug('📦 Extracting archive...')
         let output;
       
         await this.board.enter_raw_repl()
@@ -113,7 +123,7 @@ class PackageInstaller {
      * @param {string} remoteFile The file path on the board to remove
      */
     async cleanUp(remoteFile) {
-        console.log('🧹 Cleaning up archive file on board...');
+        console.debug('🧹 Cleaning up archive file on board...');
         await this.board.fs_rm(remoteFile);
     }
 }
