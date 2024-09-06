@@ -22,33 +22,33 @@ async function main() {
   const repository = args[0] || REPOSITORY;
   const port = args[1] || DEFAULT_PORT;
 
-  let sourceFile, targetFile, board, packageInstaller;
+  let sourceFilePath, targetFilePath, board, packageInstaller;
 
   try {
     console.log(`🔧 Creating archive from ${repository}...`);
     const archiver = new RepositoryArchiver(repository);
-    sourceFile = await archiver.archiveRepository(CUSTOM_PACKAGE_JSON);
-    console.log(`✅ Archive created: ${sourceFile}`);
+    sourceFilePath = await archiver.archiveRepository(CUSTOM_PACKAGE_JSON);
+    console.log(`✅ Archive created: ${sourceFilePath}`);
   } catch (error) {
     console.error(`❌ Couldn't create archive: ${error.message}`);
     return;
   }
   
   try {
-    targetFile = path.basename(sourceFile);
+    targetFilePath = path.basename(sourceFilePath);
     board = new MicroPythonBoard()
     await board.open(port)
     packageInstaller = new PackageInstaller(board);
-    await packageInstaller.uploadArchive(sourceFile, targetFile);
-    await packageInstaller.extractArchiveOnBoard(targetFile);
+    await packageInstaller.uploadArchive(sourceFilePath, targetFilePath);
+    await packageInstaller.extractArchiveOnBoard(targetFilePath);
   } catch (error) {
     console.error(`❌ Couldn't install package: ${error.message}`);
   } finally {
     if(packageInstaller){
-      await packageInstaller.cleanUp(targetFile);
+      await packageInstaller.cleanUp(targetFilePath);
     }
     console.log('🧹 Cleaning up local archive file...');
-    fs.removeSync(sourceFile);
+    fs.removeSync(sourceFilePath);
     await board.close();    
     console.log('✅ Done');
   }

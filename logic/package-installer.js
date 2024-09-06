@@ -11,6 +11,11 @@ class PackageInstaller {
         this.board = board;
     }
 
+    /**
+     * Calculates the hash of the given local file
+     * @param {string} filePath 
+     * @returns {Promise<string>} The hash of the file
+     */
     async calculateHash(filePath) {
         const hash = crypto.createHash('sha256');
         const input = fs.createReadStream(filePath);
@@ -21,17 +26,33 @@ class PackageInstaller {
         });
       }
         
-      async verifyHash(filePath, targetFile) {
+    /**
+     * Verifies the hash of the given file on the board
+     * by comparing it to the hash of the local file to the one on the board
+     * @param {string} filePath The local file path
+     * @param {string} targetFile The file path on the board
+     * @returns {Promise<boolean>} True if the hash matches, false otherwise
+     */
+    async verifyHash(filePath, targetFile) {
         const localFileHash = await this.calculateHash(filePath);
         const templateParameters = { 'localFileHash': localFileHash, 'targetFile': targetFile };
         const output = await executePythonFile(this.board, path.join(__dirname, "python", 'validate_hash.py'), templateParameters);
         return extractREPLMessage(output).includes('Hash OK');
-      }
+    }
 
-    async uploadArchive(sourceFile, targetFile) {
+    /**
+     * Uploads the given file to the board
+     * @param {string} sourceFilePath The local file path
+     * @param {string} targetFilePath The file path on the board. 
+     * Defaults to the file name taken from the source file path
+     */
+    async uploadArchive(sourceFilePath, targetFilePath = null) {
+        if(targetFilePath === null) {
+            targetFilePath = path.basename(sourceFilePath);
+        }
         process.stdout.write('📤 Uploading file to board');
         const start = Date.now();
-        await this.board.fs_put(sourceFile, targetFile, (output) => {
+        await this.board.fs_put(sourceFilePath, targetFilePath, (output) => {
           process.stdout.write(".");
         });
         const end = Date.now();
@@ -39,12 +60,16 @@ class PackageInstaller {
         console.log(`🕒 Upload completed in ${(end - start)/1000} s`);
 
         console.log('🔍 Verifying hash...');
-        if(!await this.verifyHash(sourceFile, targetFile)) {
+        if(!await this.verifyHash(sourceFilePath, targetFilePath)) {
           throw new Error('❌ Hash mismatch');
         }
     }
 
-    async extractArchiveOnBoard(archiveFileName) {
+    /**
+     * Extracts the given archive tar file on the board
+     * @param {string} archiveFilePath The tar file path on the board
+     */
+    async extractArchiveOnBoard(archiveFilePath) {
         const extractScriptFilePath = path.join(__dirname, "python", 'extract_archive.py');
         const tarfileLibFilePath = path.join(__dirname, "python", 'tarfile.py');
       
@@ -55,7 +80,7 @@ class PackageInstaller {
         output = extractREPLMessage(await this.board.exec_raw('from tarfile import TarFile, DIRTYPE'))
         await this.board.exit_raw_repl()
         
-        // Load tarfile.py if not installed on the board
+        // Load tarfile.py if tarfile module is not installed on the board
         if(output.includes('ImportError')) {
           output = extractREPLMessage(await this.board.execfile(tarfileLibFilePath));
           if (output !== '') {
@@ -69,7 +94,7 @@ class PackageInstaller {
         }
         
         await this.board.enter_raw_repl()
-        const command = `untar('${archiveFileName}')`;
+        const command = `untar('${archiveFilePath}')`;
         output = extractREPLMessage(await this.board.exec_raw(command))
         await this.board.exit_raw_repl()
       
@@ -80,9 +105,13 @@ class PackageInstaller {
         if (!output.includes('Extraction complete')) {
           throw new Error('Failed to extract archive' + output);
         }
-
     }
 
+    /**
+     * Cleans up the given file on the board
+     * This is useful to remove temporary files after they have been used e.g. the uploaded archive file
+     * @param {string} remoteFile The file path on the board to remove
+     */
     async cleanUp(remoteFile) {
         console.log('🧹 Cleaning up archive file on board...');
         await this.board.fs_rm(remoteFile);

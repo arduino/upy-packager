@@ -155,10 +155,8 @@ class RepositoryArchiver {
 
       // Clean up: Remove the temporary directory
       await fs.remove(downloadedFilesDirectory);
-
-      // TODO Clean up tar file
-
       return tarGzPath;
+      
     } catch (error) {
       console.error('Error:', error.message);
       throw error;
