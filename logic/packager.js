@@ -10,6 +10,11 @@ class Packager {
         this.serialPort = serialPort;
     }
 
+    /**
+     * Packages the repository and installs tha package on the board
+     * @param {string} repositoryUrl The URL of the repository to package and install
+     * @param {Object} customPackageJson The custom package.json object
+     */
     async packageAndInstall(repositoryUrl, customPackageJson) {
         let sourceFilePath, targetFilePath, packageInstaller;
         let downloadedFileCallback = null;
