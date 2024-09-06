@@ -65,8 +65,7 @@ class PackageInstaller {
             onProgress(parseInt(output.replace('%', '')));
           }
         });
-        const end = Date.now();
-        process.stdout.write("\n");
+        const end = Date.now();        
         console.debug(`🕒 Upload completed in ${(end - start)/1000} s`);
 
         console.debug('🔍 Verifying hash...');
@@ -85,7 +84,6 @@ class PackageInstaller {
       
         console.debug('📦 Extracting archive...')
         let output;
-      
         await this.board.enter_raw_repl()
         output = extractREPLMessage(await this.board.exec_raw('from tarfile import TarFile, DIRTYPE'))
         await this.board.exit_raw_repl()
