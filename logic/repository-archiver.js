@@ -73,8 +73,10 @@ class RepositoryArchiver {
    * @param {Array} fileInfo The file info array containing the target path and the source URL
    * The format is [targetRelativePath, sourceUrl] e.g. ['modulino/__init__.py', 'github:arduino/modulino-mpy/src/modulino/__init__.py']
    * @param {string} targetDirectory The local directory to save the file to.
+   * @param {async function} processFileCallback An async callback function to process the downloaded file.
+   * The callback takes a file path as argument and should return a new file path.
    */
-  async downloadFile(fileInfo, targetDirectory) {
+  async downloadFile(fileInfo, targetDirectory, processFileCallback = null) {
     const [targetRelativePath, sourceUrl] = fileInfo;
     const rawUrl = this.getRawFileURL(sourceUrl);
     const filePath = path.join(targetDirectory, targetRelativePath);
@@ -87,6 +89,15 @@ class RepositoryArchiver {
 
     const writer = fs.createWriteStream(filePath);
     await pipe(response.body, writer);
+
+    if (processFileCallback) {
+      const newFilePath = await processFileCallback(filePath);
+      if (newFilePath && filePath !== newFilePath) {
+        // If the processed file has a different path
+        // delete the original file.
+        await fs.remove(filePath);
+      }
+    }
   }
 
   /**
@@ -122,25 +133,32 @@ class RepositoryArchiver {
    * @param {Object} customPackageJson A custom package.json object to use instead of fetching it from the repository.
    * This is useful when the package.json file is not available in the repository or when the files to download are known in advance.
    * It can also be used to selectively download files.
-   * @param {string} targetDirectory The directory to save the archive to. Defaults to 'out'.
+   * @param {string} targetDirectory The directory to save the archive to.
+   * Defaults to a temporary directory.
+   * @param {function} processFileCallback A callback function to process the downloaded file one by one.
+   * The callback takes a file path as argument and should return a new file path.
    * @returns {string} The path to the created tar.gz archive.
    * @throws {Error} If an error occurs during the archiving process.
    */
-  async archiveRepository(customPackageJson = null, targetDirectory = 'out') {
+  async archiveRepository(customPackageJson = null, targetDirectory = null, processFileCallback = null) {
+    if(!targetDirectory){
+      targetDirectory = await fs.mkdtemp(path.join(os.tmpdir(), 'mpy-package-archive-'));
+    }
+
     try {
       let packageJson;
       if (customPackageJson) {
         packageJson = customPackageJson;
       } else {
-        console.log('🌐 Fetching package.json...');
+        console.debug('🌐 Fetching package.json...');
         packageJson = await this.fetchPackageJson(this.repoUrl);
       }
 
       // Create a temporary directory for downloaded files
       const downloadedFilesDirectory = await fs.mkdtemp(path.join(os.tmpdir(), 'downloaded_files-'));
 
-      console.log('🌐 Downloading files from repository...');
-      const downloadPromises = packageJson.urls.map(entry => this.downloadFile(entry, downloadedFilesDirectory));
+      console.debug('🌐 Downloading files from repository...');
+      const downloadPromises = packageJson.urls.map(entry => this.downloadFile(entry, downloadedFilesDirectory, processFileCallback));
       await Promise.all(downloadPromises);
 
       const packageName = packageJson.name || this.getRepoName();
@@ -150,7 +168,7 @@ class RepositoryArchiver {
 
       await fs.ensureDir(targetDirectory);
 
-      console.log('📁 Creating tar.gz archive...');
+      console.debug('📁 Creating tar.gz archive...');
       await this.createTarGzArchive(downloadedFilesDirectory, tarGzPath);
 
       // Clean up: Remove the temporary directory
