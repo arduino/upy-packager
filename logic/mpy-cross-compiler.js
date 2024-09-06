@@ -9,6 +9,12 @@ const __dirname = new URL('.', import.meta.url).pathname;
  * Class to compile MicroPython files using the mpy-cross compiler
  */
 class MPyCrossCompiler {
+
+    /**
+     * Constructs a new MPyCrossCompiler instance
+     * @param {MicroPythonBoard} board The MicroPython board instance to use.
+     * This class assumes that the board's port is already open.
+     */
     constructor(board){
         this.board = board;
     }
@@ -65,27 +71,27 @@ class MPyCrossCompiler {
     }
 
     /**
-     * Compiles the given files using the mpy-cross compiler
-     * @param {string[]} filePaths The paths to the files to compile
-     * @param {boolean} detectArchitecture If true, the architecture of the board will be detected
-     * @returns {Promise<void[]>} A promise that resolves when all files have been compiled
-     * @throws {Error} If the compiler version does not match the board version
+     * Checks if the mpy-cross compiler supports the mpy file format of the board
+     * @returns {Promise<boolean>} A promise that resolves to true if the compiler 
+     * supports the board's mpy file format
      */
-    async compileFiles(filePaths, detectArchitecture = true){
+    async supportsBoardMpyFileFormat(){
         const compilerFileFormat = await this.getMPyFileFormatFromCompiler();
         const boardFileFormat = await this.getMPyFileFormatFromBoard();
+        return compilerFileFormat == boardFileFormat;
+    }
 
-        if(compilerFileFormat !== boardFileFormat){
-            throw new Error(`❌ The compiler version ${compilerFileFormat} does not match the board version ${boardFileFormat}`);
-        }  
-        let architecture = null;
-        if(detectArchitecture){
-            architecture = await this.getArchitectureFromBoard();
-        }
-
+    /**
+     * Compiles the given files using the mpy-cross compiler
+     * @param {string[]} filePaths The paths to the files to compile
+     * @param {string} boardArchitecture The architecture of the board (e.g. 'xtensa').
+     * If omitted, the architecture will not be specified for compilation.
+     * @returns {Promise<void[]>} A promise that resolves when all files have been compiled
+     */
+    async compileFiles(filePaths, boardArchitecture = null){
         let promises = [];
         for(const filePath of filePaths){
-            promises.push(this.compileFile(filePath, architecture));
+            promises.push(this.compileFile(filePath, boardArchitecture));
         }
         return Promise.all(promises);
     }        
@@ -95,7 +101,9 @@ class MPyCrossCompiler {
      * @param {string} filePath The path to the file to compile
      * @param {string} boardArchitecture The architecture of the board (e.g. 'xtensa').
      * If omitted, the architecture will not be specified for compilation.
-     * @returns {Promise<void>} A promise that resolves when the file has been compiled
+     * @returns {Promise<string>} A promise that resolves with the path to the compiled file.
+     * The compiled file will have the same name as the input file but with the .mpy extension.
+     * @throws {Error} If the compilation fails
      */
     async compileFile(filePath, boardArchitecture = null){                
         let flags = boardArchitecture ? `-march=${boardArchitecture}` : '';
@@ -106,7 +114,8 @@ class MPyCrossCompiler {
                     reject(error);
                     return;
                 }
-                resolve();
+                // Resolve with the compiled file path (<filename>.mpy)
+                resolve(`${filePath.slice(0, -3)}.mpy`);
             });
         });
     }
