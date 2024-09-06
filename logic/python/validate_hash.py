@@ -5,6 +5,7 @@ hash = sha256()
 
 with open('${targetFile}', 'rb') as f:  
     # TODO: Possibly read file in chunks  
+    # SEE: http://micropython.org/resources/examples/chunk.py
     data = f.read()
     hash.update(data)
 
