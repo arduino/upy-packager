@@ -10,6 +10,24 @@ const pipe = promisify(pipeline);
 // SEE: https://github.com/micropython/micropython/blob/master/tools/mpremote/mpremote/mip.py
 
 /**
+ * Data class to store the result of the archiving process
+ * Stores the path to the created archive and the common folder of the target paths in the package.json file
+ * aka the package folder.
+ */
+class ArchiveResult {
+
+  /**
+   * Creates a new ArchiveResult object
+   * @param {string} archivePath The path to the created archive
+   * @param {string} packageFolder The common folder of the target paths in the package.json file
+   */
+  constructor(archivePath, packageFolder) {
+    this.archivePath = archivePath;
+    this.packageFolder = packageFolder;
+  }
+}
+
+/**
  * Class to archive a repository by downloading files from it and creating a tar.gz archive.
  * The files to be downloaded need to be specified in a package.json file in the repository.
  * Alternatively, a custom package.json object can be provided.
@@ -129,6 +147,37 @@ class RepositoryArchiver {
   }
 
   /**
+   * Extracts the common folder of the target paths in the package.json file
+   * This is useful to determine the target folder when extracting the archive on the board
+   * E.g. if the target paths are ['modulino/__init__.py', 'modulino/buttons.py']
+   * the common folder is 'modulino'.
+   * @param {Object} packageJsonData 
+   * @returns {string} The common folder of the target paths in the package.json file
+   */
+  getPackageFolder(packageJsonData) {
+    const targetPaths = packageJsonData.urls.map(entry => entry[0]);
+    const folders = targetPaths.map(entry => {
+      const parts = entry.split('/')
+      if (parts.length > 1) {
+        return parts[0];
+      }
+      return null;
+    }).filter(folder => folder !== null);
+    
+    if (folders.length === 0) {
+      throw new Error('The target paths in package.json do not contain any folders. Please ensure all files are in a folder.');
+    }
+    
+    // Check if all target paths have the same folder
+    if (folders.every(folder => folder === folders[0])) {
+      return folders[0];
+    } else {
+      // If the target paths have different folders, throw an error
+      throw new Error('The target paths in package.json have different folders. Please ensure all files are in the same folder.');
+    }
+  }
+
+  /**
    * Archives the repository by downloading files from it and creating a tar.gz archive.
    * @param {Object} customPackageJson A custom package.json object to use instead of fetching it from the repository.
    * This is useful when the package.json file is not available in the repository or when the files to download are known in advance.
@@ -173,8 +222,7 @@ class RepositoryArchiver {
 
       // Clean up: Remove the temporary directory
       await fs.remove(downloadedFilesDirectory);
-      return tarGzPath;
-      
+      return new ArchiveResult(tarGzPath, this.getPackageFolder(packageJson));
     } catch (error) {
       console.error('Error:', error.message);
       throw error;
@@ -182,4 +230,4 @@ class RepositoryArchiver {
   }
 }
 
-export { RepositoryArchiver };
+export { RepositoryArchiver, ArchiveResult };

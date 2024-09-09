@@ -16,7 +16,7 @@ class Packager {
      * @param {Object} customPackageJson The custom package.json object
      */
     async packageAndInstall(repositoryUrl, customPackageJson) {
-        let sourceFilePath, targetFilePath, packageInstaller;
+        let tarFilePath, targetFilePath, packageInstaller, packageFolder;
         let downloadedFileCallback = null;
         const board = new MicroPythonBoard()
 
@@ -37,18 +37,22 @@ class Packager {
                 }
             }
 
-            sourceFilePath = await archiver.archiveRepository(customPackageJson, null, downloadedFileCallback);
-            console.debug(`✅ Archive created: ${sourceFilePath}`);
+            const archiveResult = await archiver.archiveRepository(customPackageJson, null, downloadedFileCallback);            
+            packageFolder = archiveResult.packageFolder;
+            tarFilePath = archiveResult.archivePath;
+            console.debug(`✅ Archive created: ${archiveResult.archivePath}`);
         } catch (error) {
             await board.close();
             throw new Error(`❌ Couldn't create archive: ${error.message}`);
         }
 
         try {
-            targetFilePath = path.basename(sourceFilePath);
+            // TODO remove target directory if exists and overwrite == true
+            // use packageFolder as target directory            
+            targetFilePath = path.basename(tarFilePath);
             packageInstaller = new PackageInstaller(board);
             console.debug('📤 Uploading file to board');
-            await packageInstaller.uploadArchive(sourceFilePath, targetFilePath, (progress) => {
+            await packageInstaller.uploadArchive(tarFilePath, targetFilePath, (progress) => {
                 console.debug(`Progress: ${progress}%`);
             });
             await packageInstaller.extractArchiveOnBoard(targetFilePath);
@@ -57,7 +61,7 @@ class Packager {
         } finally {
             await packageInstaller.cleanUp(targetFilePath);
             console.debug('🧹 Cleaning up local archive file...');
-            fs.removeSync(sourceFilePath);
+            fs.removeSync(tarFilePath);
             await board.close();
         }
     }
