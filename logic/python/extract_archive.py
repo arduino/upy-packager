@@ -39,7 +39,7 @@ def untar(file_path, target_dir = "lib", cleanup = True):
                 entry_type = entry.type
 
                 # Skip . and ./ directories
-                if entry_type == DIRTYPE and (entry_name == "." or entry_name == "./"):
+                if entry_type == DIRTYPE and (entry_name == "./" or entry_name == "."):
                     continue
 
                 # Strip leading "./" or "/"
