@@ -5,14 +5,20 @@ import MicroPythonBoard from 'micropython.js';
  * Extracts the message from the output of the REPL by removing the prefix and suffix
  * conrol characters.
  * @param {string} out The output from the REPL
+ * @param {boolean} stripTrailingLinebreak Whether to strip the trailing linebreak from the message
+ * When using 'print()' in MicroPython, a \r\n linebreak is added to the output.
  * @returns The extracted message from the REPL output
  */
-function extractREPLMessage(out) {
+function extractREPLMessage(out, stripTrailingLinebreak = true) {
     /*
      * Message ($msg) will come out following this template:
      * "OK${msg}\x04${err}\x04>"
      */
-    return out.slice(2, -3)
+    let output = out.slice(2, -3)
+    if (stripTrailingLinebreak && output.endsWith('\r\n')) {
+      output = output.slice(0, -2)
+    }
+    return output;
 }
 
 /**
@@ -40,6 +46,7 @@ async function fileOrDirectoryExists(board, filePath) {
  * @param {string} filePath 
  * @param {Object} templateParameters Template parameters to be replaced in the Python script
  * They are denoted by ${paramName} in the script. The key in the object should be paramName.
+ * e.g. { 'localFileHash': 'acbd18db4cc2f85cedef654fccc4a4d8', 'targetFile': 'tmp.txt' }
  */
 async function executePythonFile(board, filePath, templateParameters) {
     let script = fs.readFileSync(filePath, 'utf-8');

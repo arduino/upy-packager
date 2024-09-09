@@ -1,17 +1,20 @@
 from hashlib import sha256
 from binascii import hexlify
 
-hash = sha256()
+def validate_hash(target_file, local_file_hash, chunk_size = 512):
+  hash = sha256()
 
-with open('${targetFile}', 'rb') as f:  
-    # TODO: Possibly read file in chunks  
-    # SEE: http://micropython.org/resources/examples/chunk.py
-    data = f.read()
-    hash.update(data)
+  with open(target_file, 'rb') as f:  
+    
+    while True:        
+      data = f.read(chunk_size)            
+      if len(data) == 0:
+        break      
+      hash.update(data)
 
-digest_hex = hexlify(hash.digest())
+  digest_hex = hexlify(hash.digest())  
 
-if digest_hex == b'${localFileHash}':
-  print('Hash OK')
-else:
-  print('Hash mismatch')
+  if digest_hex == local_file_hash:
+    print('1')
+  else:
+    print('0')

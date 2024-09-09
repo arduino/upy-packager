@@ -41,9 +41,16 @@ class PackageInstaller {
      */
     async verifyHash(filePath, targetFile) {
         const localFileHash = await this.calculateHash(filePath);
-        const templateParameters = { 'localFileHash': localFileHash, 'targetFile': targetFile };
-        const output = await executePythonFile(this.board, path.join(__dirname, "python", 'validate_hash.py'), templateParameters);
-        return extractREPLMessage(output).includes('Hash OK');
+        const scriptPath = path.join(__dirname, "python", 'validate_hash.py');
+
+        let output = extractREPLMessage(await this.board.execfile(scriptPath));
+        if (output !== '') {
+          throw new Error('Failed to load validate_hash.py. Output: ' + output);
+        }
+        await this.board.enter_raw_repl()
+        output = extractREPLMessage(await this.board.exec_raw(`validate_hash('${targetFile}', b'${localFileHash}')`));
+        await this.board.exit_raw_repl()
+        return output === '1';
     }
 
     /**
