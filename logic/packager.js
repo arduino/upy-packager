@@ -13,9 +13,10 @@ class Packager {
     /**
      * Packages the repository and installs tha package on the board
      * @param {string} repositoryUrl The URL of the repository to package and install
-     * @param {Object} customPackageJson The custom package.json object
+     * @param {Object} customPackageJson The custom package.json object.
+     * This parameter is optional. If not provided, the package.json file from the repository will be used.
      */
-    async packageAndInstall(repositoryUrl, customPackageJson) {
+    async packageAndInstall(repositoryUrl, customPackageJson = null) {
         let tarFilePath, targetFilePath, packageInstaller, packageFolder;
         let downloadedFileCallback = null;
         const board = new MicroPythonBoard()
@@ -48,7 +49,8 @@ class Packager {
 
         try {
             // TODO remove target directory if exists and overwrite == true
-            // use packageFolder as target directory            
+            // use packageFolder as target directory
+            // Add .deletePackageFolder() method to PackageInstaller            
             targetFilePath = path.basename(tarFilePath);
             packageInstaller = new PackageInstaller(board);
             console.debug('📤 Uploading file to board');
