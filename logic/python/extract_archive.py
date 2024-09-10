@@ -23,7 +23,7 @@ def decompress_file(file_path):
 
         return tar_file
 
-def untar(file_path, target_dir = "lib", cleanup = True):
+def untar(file_path, target_dir, cleanup = True):
     if not file_or_dir_exists(target_dir):
         raise Exception(f"{target_dir} directory does not exist")
 

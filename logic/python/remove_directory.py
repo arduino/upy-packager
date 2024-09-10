@@ -6,7 +6,7 @@ _S_IFMT = const(0o170000)
 def is_directory(directory):
     try:
         result = os.stat(directory)
-        return result.st_mode & _S_IFMT == _S_IFDIR
+        return (result[0] & _S_IFMT) == _S_IFDIR
     except OSError:
         return False
 

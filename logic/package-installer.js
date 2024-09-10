@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import path from 'path';
 import fs from 'fs';
-import { extractREPLMessage, executePythonFile } from './micropython-extensions.js';
+import { extractREPLMessage, fileOrDirectoryExists } from './micropython-extensions.js';
 import MicroPythonBoard from 'micropython.js';
 
 // Define __dirname for ES6 modules
@@ -11,10 +11,12 @@ class PackageInstaller {
     /**
      * Constructs a new PackageInstaller instance
      * @param {MicroPythonBoard} board The MicroPython board instance to use.
+     * @param {string} libraryPath The path to the library folder on the board. Defaults to 'lib'.
      * This class assumes that the board's port is already open.
      */
-    constructor(board) {
+    constructor(board, libraryPath = "lib") {
         this.board = board;
+        this.libraryPath = libraryPath;
     }
 
     /**
@@ -51,6 +53,36 @@ class PackageInstaller {
         output = extractREPLMessage(await this.board.exec_raw(`validate_hash('${targetFile}', b'${localFileHash}')`));
         await this.board.exit_raw_repl()
         return output === '1';
+    }
+
+    /**
+     * Determines if the given package folder exists on the board.
+     * Please note that the package name and the package folder name are not necessarily the same.
+     * The package folder is the folder where the package is extracted to.
+     * @param {string} packageFolder The package folder name.
+     * @returns {Promise<boolean>} True if the package folder exists, false otherwise
+     */ 
+    async packageFolderExists(packageFolder) {
+        return fileOrDirectoryExists(this.board, path.join(this.libraryPath, packageFolder));
+    }
+
+    /**
+     * Deletes the given package folder on the board
+     * Please note that the package name and the package folder name are not necessarily the same.
+     * The package folder is the folder where the package is extracted to.
+     * @param {string} packageFolder The package folder name.
+     */
+    async deletePackageFolder(packageFolder) {
+        await this.board.execfile(path.join(__dirname, "python", 'remove_directory.py'));
+        await this.board.enter_raw_repl()
+        const targetDirectory = path.join(this.libraryPath, packageFolder);
+        const output = extractREPLMessage(await this.board.exec_raw(`remove_directory_recursive('${targetDirectory}')`));
+        await this.board.exit_raw_repl()
+        
+        if(output.includes('OSError:')) {
+          const errorMessage = output.match(/OSError: \[.*\] .*/)[0];
+          throw new Error(`Failed to delete existing package folder. ${errorMessage}`);
+        }
     }
 
     /**
@@ -109,7 +141,7 @@ class PackageInstaller {
         }
         
         await this.board.enter_raw_repl()
-        const command = `untar('${archiveFilePath}')`;
+        const command = `untar('${archiveFilePath}', '${this.libraryPath}')`;
         output = extractREPLMessage(await this.board.exec_raw(command))
         await this.board.exit_raw_repl()
       
