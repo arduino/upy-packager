@@ -3,7 +3,7 @@ import path from 'path';
 import fs from 'fs-extra';
 import { fileURLToPath } from 'url';
 import cors from 'cors';
-import GitRepoArchiver from './GitRepoArchiver.js';
+import { RepositoryArchiver } from './logic/repository-archiver.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -13,26 +13,27 @@ const port = 3000;
 // Enable CORS for all origins
 app.use(cors());
 
-// Parse JSON bodies
+// Parse JSON bodies (as sent by API clients)
 app.use(express.json());
 
-// Parse URL-encoded bodies
+// Parse URL-encoded bodies (as sent by HTML forms)
 app.use(express.urlencoded({ extended: true }));
 
 // Serve static files from the 'out' directory
-app.use('/downloads', express.static(path.resolve(__dirname, 'out')));
+// app.use('/downloads', express.static(path.resolve(__dirname, 'out')));
 
 // Helper function to handle the archive request
 async function handleArchiveRequest(res, repoUrl, customPackageJson = null) {
     try {
-      const archiver = new GitRepoArchiver(repoUrl);
+      const archiver = new RepositoryArchiver(repoUrl);
   
       // Create a temporary file path for the .tar.gz
       const tempDir = path.join(__dirname, 'temp');
       await fs.ensureDir(tempDir);
   
       // Archive the repository and get the filename
-      const tarGzFilePath = await archiver.archiveRepo(customPackageJson);
+      //TODO use Packager and add new function package() that also compiles to mpy
+      const tarGzFilePath = (await archiver.archiveRepository(customPackageJson)).archivePath;
       const tarGzFileName = path.basename(tarGzFilePath);
 
       // Move the .tar.gz file from 'out' to temp directory for download
