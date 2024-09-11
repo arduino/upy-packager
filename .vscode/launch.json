@@ -30,6 +30,15 @@
                 "<node_internals>/**"
             ],
             "program": "${workspaceFolder}/server.js",
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Test CRC",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "program": "${workspaceFolder}/test-crc.js",
         }
     ]
 }

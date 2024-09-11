@@ -1,5 +1,10 @@
 import fs from 'fs';
+import path from 'path';
 import MicroPythonBoard from 'micropython.js';
+import CRC32 from 'crc-32';
+
+// Define __dirname for ES6 modules
+const __dirname = path.dirname(new URL(import.meta.url).pathname);
 
 /**
  * Extracts the message from the output of the REPL by removing the prefix and suffix
@@ -60,4 +65,73 @@ async function executePythonFile(board, filePath, templateParameters) {
     return output;
 }
 
-export { extractREPLMessage, executePythonFile, fileOrDirectoryExists };
+/**
+ * Calculates the CRC32 checksum of the given data
+ * It converts the checksum to an unsigned 32-bit integer to match Python's implementation
+ * and then returns it as a Uint8Array
+ * @param {number[] | Uint8Array } data 
+ * @returns {Uint8Array} The CRC32 checksum as a Uint8Array
+ */
+function getCRC32(data){  
+  const crc = CRC32.buf(data) >>> 0; // Convert to unsigned 32 bit
+  const buffer = new ArrayBuffer(4); // 4 bytes for a 32-bit integer
+  const view = new DataView(buffer);
+  view.setUint32(0, crc); // Set the 32-bit unsigned integer at byteOffset = 0
+  return new Uint8Array(buffer);
+}
+
+/**
+ * Writes a file to the board and validates the CRC32 checksum of the data
+ * The file is read in chunks of the specified size and the CRC32 checksum is calculated for each chunk.
+ * @param {MicroPythonBoard} board 
+ * @param {string} src 
+ * @param {string} dest 
+ * @param {function} data_consumer 
+ * @param {number} chunkSize 
+ * @returns {Promise<string>} The output of the write operation
+ */
+async function writeFile(board, src, dest, data_consumer, chunkSize = 512) {
+  data_consumer = data_consumer || function () { }
+  if (src && dest) {
+    const fileContent = fs.readFileSync(path.resolve(src), 'binary')
+    const contentBuffer = Buffer.from(fileContent, 'binary')
+    const scriptPath = path.join(__dirname, "python", 'crc.py');
+    let output = await board.execfile(scriptPath);
+    let completeOutput = ''
+
+    if (output.slice(2, -3) != '') {
+      return Promise.reject(new Error(`Error executing Python script: ${output}`))
+    }
+
+    completeOutput += await board.enter_raw_repl()
+    completeOutput += await board.exec_raw(`f=open('${dest}','wb')\nw=f.write`)
+
+    for (let i = 0; i < contentBuffer.length; i += chunkSize) {
+      let slice = Uint8Array.from(contentBuffer.subarray(i, i + chunkSize))
+      const crcData = getCRC32(slice);
+      const mergedData = new Uint8Array(slice.length + crcData.length);
+      mergedData.set(slice);
+      mergedData.set(crcData, slice.length);
+
+      let line = `d=bytes([${mergedData}]);print(1 if validate_crc(d) else 0)`;
+      output = await board.exec_raw(line)
+      completeOutput += output
+      const crcCorrect = output.slice(2, -5) == '1'
+
+      if (!crcCorrect) {
+        completeOutput += await board.exec_raw(`f.close()`)
+        return Promise.reject(new Error(`CRC32 check failed at byte ${i} .. ${i + chunkSize}`))
+      } else {
+        completeOutput += await board.exec_raw(`w(d[:-4])`)
+      }
+
+      data_consumer(parseInt((i / contentBuffer.length) * 100) + '%')
+    }
+    completeOutput += await board.exec_raw(`f.close()`)
+    completeOutput += await board.exit_raw_repl()
+    return Promise.resolve(completeOutput)
+  }
+  return Promise.reject(new Error(`Must specify source and destination paths`))
+}
+
+export { extractREPLMessage, executePythonFile, fileOrDirectoryExists, writeFile };

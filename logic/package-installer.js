@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import path from 'path';
 import fs from 'fs';
-import { extractREPLMessage, fileOrDirectoryExists } from './micropython-extensions.js';
+import { extractREPLMessage, fileOrDirectoryExists, writeFile } from './micropython-extensions.js';
 import MicroPythonBoard from 'micropython.js';
 
 // Define __dirname for ES6 modules
@@ -99,7 +99,7 @@ class PackageInstaller {
         }
         
         const start = Date.now();
-        await this.board.fs_put(sourceFilePath, targetFilePath, (output) => {
+        await writeFile(this.board, sourceFilePath, targetFilePath, (output) => {
           if(onProgress) {
             onProgress(parseInt(output.replace('%', '')));
           }
