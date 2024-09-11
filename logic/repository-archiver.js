@@ -186,7 +186,7 @@ class RepositoryArchiver {
    * Defaults to a temporary directory.
    * @param {function} processFileCallback A callback function to process the downloaded file one by one.
    * The callback takes a file path as argument and should return a new file path.
-   * @returns {string} The path to the created tar.gz archive.
+   * @returns {ArchiveResult} The result of the archiving process containing the path to the created archive and the package folder.
    * @throws {Error} If an error occurs during the archiving process.
    */
   async archiveRepository(customPackageJson = null, targetDirectory = null, processFileCallback = null) {
