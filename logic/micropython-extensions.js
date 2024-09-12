@@ -83,11 +83,11 @@ function getCRC32(data){
 /**
  * Writes a file to the board and validates the CRC32 checksum of the data
  * The file is read in chunks of the specified size and the CRC32 checksum is calculated for each chunk.
- * @param {MicroPythonBoard} board 
- * @param {string} src 
- * @param {string} dest 
- * @param {function} data_consumer 
- * @param {number} chunkSize 
+ * @param {MicroPythonBoard} board The MicroPython board instance
+ * @param {string} src The source file path to read from
+ * @param {string} dest The destination file path to write to
+ * @param {function} data_consumer The callback function to consume the data read progress
+ * @param {number} chunkSize The initial chunk size to read the file in
  * @returns {Promise<string>} The output of the write operation
  */
 async function writeFile(board, src, dest, data_consumer, chunkSize = 512) {
@@ -130,6 +130,7 @@ async function writeFile(board, src, dest, data_consumer, chunkSize = 512) {
         
         continue
       } else {
+        // Writa data excluding the last 4 bytes (CRC32)
         completeOutput += await board.exec_raw(`w(d[:-4])`)
         const newProgress = parseInt((i / contentBuffer.length) * 100)
         if (newProgress != currentProgress) {
