@@ -1,7 +1,6 @@
 import { exec } from 'child_process';
 import { platform } from 'os';
 import path from 'path';
-import { extractREPLMessage } from './micropython-extensions.js';
 
 const __dirname = new URL('.', import.meta.url).pathname;
 
@@ -9,26 +8,6 @@ const __dirname = new URL('.', import.meta.url).pathname;
  * Class to compile MicroPython files using the mpy-cross compiler
  */
 class MPyCrossCompiler {
-
-    /**
-     * Constructs a new MPyCrossCompiler instance
-     * @param {MicroPythonBoard} board The MicroPython board instance to use.
-     * This class assumes that the board's port is already open.
-     */
-    constructor(board){
-        this.board = board;
-    }
-
-    /**
-     * Retrieves the major version of the mpy file format from the board
-     * @returns {Promise<number>} The major version of the mpy file format
-     */
-    async getMPyFileFormatFromBoard(){
-        await this.board.enter_raw_repl();
-        const output = extractREPLMessage(await this.board.exec_raw("import sys; print(getattr(sys.implementation, '_mpy', 0) & 0xFF)"));
-        await this.board.exit_raw_repl();
-        return parseInt(output);
-    }
 
     /**
      * Retrieves the path to the mpy-cross compiler binary
@@ -55,29 +34,6 @@ class MPyCrossCompiler {
                 resolve(version ? parseInt(version[1]) : null);
             });
         });
-    }
-
-    /**
-     * Retrieves the architecture of the board (e.g. 'xtensa')
-     * @returns {Promise<string>} The architecture of the board
-     */
-    async getArchitectureFromBoard(){
-        await this.board.enter_raw_repl();
-        const output = extractREPLMessage(await this.board.exec_raw("import platform; print(platform.platform())"));
-        await this.board.exit_raw_repl();
-        // Arch is the third part of the string when split by '-'
-        const parts = output.split('-');
-        return parts[2];
-    }
-
-    /**
-     * Checks if the mpy-cross compiler supports the mpy file format of the board
-     * @returns {Promise<boolean>} A promise that resolves to true if the compiler 
-     * supports the board's mpy file format
-     */
-    async supportsBoardMpyFileFormat(){
-        const boardFileFormat = await this.getMPyFileFormatFromBoard();
-        return await this.supportsMpyFileFormat(boardFileFormat);
     }
 
     /**
