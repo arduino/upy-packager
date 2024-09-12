@@ -10,21 +10,11 @@ class Packager {
         this.serialPort = serialPort;
     }
 
-    /**
-     * Packages the repository and installs tha package on the board
-     * @param {string} repositoryUrl The URL of the repository to package and install
-     * @param {boolean} overwriteExisting Whether to overwrite existing files on the board. Defaults to false.
-     * When set to true, an existing package folder with the same name will be deleted before installing the new package.
-     * @param {Object} customPackageJson The custom package.json object.
-     * This parameter is optional. If not provided, the package.json file from the repository will be used.
-     */
-    async packageAndInstall(repositoryUrl, overwriteExisting = false, customPackageJson = null) {
-        let tarFilePath, targetFilePath, packageInstaller, packageFolder;
+    async package(board, repositoryUrl, customPackageJson = null, mpyFileFormat = null) {        
+        let archiveResult;
         let downloadedFileCallback = null;
-        const board = new MicroPythonBoard()
 
-        try {
-            await board.open(this.serialPort)
+        try {            
             console.debug(`🔧 Creating archive from ${repositoryUrl}...`);
             const archiver = new RepositoryArchiver(repositoryUrl);
             const compiler = new MPyCrossCompiler(board);
@@ -40,33 +30,40 @@ class Packager {
                 }
             }
 
-            const archiveResult = await archiver.archiveRepository(customPackageJson, null, downloadedFileCallback);            
-            packageFolder = archiveResult.packageFolder;
-            tarFilePath = archiveResult.archivePath;
+            archiveResult = await archiver.archiveRepository(customPackageJson, null, downloadedFileCallback);                        
             console.debug(`✅ Archive created: ${archiveResult.archivePath}`);
         } catch (error) {
             await board.close();
             throw new Error(`Couldn't create archive: ${error.message}`);
         }
 
-        try {
-            packageInstaller = new PackageInstaller(board);
-            targetFilePath = path.basename(tarFilePath);
+        return archiveResult;
+    }
 
-            if(overwriteExisting && await packageInstaller.packageFolderExists(packageFolder)) {
-                console.debug(`🗑 Deleting existing package folder: ${packageFolder}`);
-                await packageInstaller.deletePackageFolder(packageFolder);
-            }
-            
-            console.debug('📤 Uploading file to board');
-            await packageInstaller.uploadArchive(tarFilePath, targetFilePath, (progress) => {
+    /**
+     * Packages the repository and installs tha package on the board
+     * @param {string} repositoryUrl The URL of the repository to package and install
+     * @param {boolean} overwriteExisting Whether to overwrite existing files on the board. Defaults to false.
+     * When set to true, an existing package folder with the same name will be deleted before installing the new package.
+     * @param {Object} customPackageJson The custom package.json object.
+     * This parameter is optional. If not provided, the package.json file from the repository will be used.
+     */
+    async packageAndInstall(repositoryUrl, overwriteExisting = false, customPackageJson = null) {
+        const board = new MicroPythonBoard();
+        await board.open(this.serialPort);
+
+        const archiveResult = await this.package(board, repositoryUrl, customPackageJson);
+        const packageFolder = archiveResult.packageFolder;
+        const tarFilePath = archiveResult.archivePath;
+        const packageInstaller = new PackageInstaller(board);
+        
+        try {
+            await packageInstaller.installPackage(tarFilePath, packageFolder, overwriteExisting, (progress) => {
                 console.debug(`Progress: ${progress}%`);
             });
-            await packageInstaller.extractArchiveOnBoard(targetFilePath);
         } catch (error) {
             throw new Error(`Couldn't install package: ${error.message}`);
         } finally {
-            await packageInstaller.cleanUp(targetFilePath);
             console.debug('🧹 Cleaning up local archive file...');
             fs.removeSync(tarFilePath);
             await board.close();
