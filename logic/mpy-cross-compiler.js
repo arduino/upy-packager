@@ -76,9 +76,20 @@ class MPyCrossCompiler {
      * supports the board's mpy file format
      */
     async supportsBoardMpyFileFormat(){
-        const compilerFileFormat = await this.getMPyFileFormatFromCompiler();
         const boardFileFormat = await this.getMPyFileFormatFromBoard();
-        return compilerFileFormat == boardFileFormat;
+        return await this.supportsMpyFileFormat(boardFileFormat);
+    }
+
+    /**
+     * Checks if the mpy-cross compiler supports the given mpy file format
+     * @param {number} mpyFileFormat The major version of the mpy file format
+     * @returns {Promise<boolean>} A promise that resolves to true if the compiler
+     * supports the given mpy file format
+     * @throws {Error} If the compiler version cannot be determined
+     */
+    async supportsMpyFileFormat(mpyFileFormat){
+        const compilerFileFormat = await this.getMPyFileFormatFromCompiler();
+        return compilerFileFormat == mpyFileFormat
     }
 
     /**
