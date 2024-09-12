@@ -3,7 +3,7 @@ import path from 'path';
 import fs from 'fs-extra';
 import { fileURLToPath } from 'url';
 import cors from 'cors';
-import { RepositoryArchiver } from './logic/repository-archiver.js';
+import { Packager } from './logic/packager.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -23,17 +23,16 @@ app.use(express.urlencoded({ extended: true }));
 // app.use('/downloads', express.static(path.resolve(__dirname, 'out')));
 
 // Helper function to handle the archive request
-async function handleArchiveRequest(res, repoUrl, customPackageJson = null) {
+async function handleArchiveRequest(res, repoUrl, architecture = null, format = null, customPackageJson = null) {
     try {
-      const archiver = new RepositoryArchiver(repoUrl);
+      const packager = new Packager();
   
       // Create a temporary file path for the .tar.gz
       const tempDir = path.join(__dirname, 'temp');
       await fs.ensureDir(tempDir);
   
       // Archive the repository and get the filename
-      //TODO use Packager and add new function package() that also compiles to mpy
-      const tarGzFilePath = (await archiver.archiveRepository(customPackageJson)).archivePath;
+      const tarGzFilePath = (await packager.packageForArchitectureAndFormat(repoUrl, architecture, format, customPackageJson)).archivePath;
       const tarGzFileName = path.basename(tarGzFilePath);
 
       // Move the .tar.gz file from 'out' to temp directory for download
@@ -60,14 +59,14 @@ async function handleArchiveRequest(res, repoUrl, customPackageJson = null) {
   
 // Handle POST requests for archiving repositories
 app.post('/archive', (req, res) => {
-    const { repoUrl, customPackageJson } = req.body;
+    const { repoUrl, customPackageJson, format, architecture } = req.body;
     const customPackageJsonObj = customPackageJson ? JSON.parse(customPackageJson) : null;
 
     if (!repoUrl) {
         return res.status(400).send('Repository URL is required');
     }
 
-    handleArchiveRequest(res, repoUrl, customPackageJsonObj);
+    handleArchiveRequest(res, repoUrl, architecture, format, customPackageJsonObj)
 });
 
 // Handle GET requests for archiving repositories
@@ -98,9 +97,13 @@ app.get('/', (req, res) => {
     <form action="/archive" method="post">
       <label for="repoUrl">Repository URL:</label><br>
       <input type="text" id="repoUrl" name="repoUrl" value="" required style="width: 800px;" ><br><br>
-        <label for="customPackageJson">Custom package.json:</label><br>
-        <textarea id="customPackageJson" name="customPackageJson" rows="4" cols="50" style="width: 800px;"></textarea><br><br>
-        <input type="submit" value="Download">
+      <label for="architecture">Architecture:</label><br>
+      <input type="text" id="architecture" name="architecture" value="" ><br>
+      <label for="format">Format:</label><br>
+      <input type="text" id="format" name="format" value="" ><br>
+      <label for="customPackageJson">Custom package.json:</label><br>
+      <textarea id="customPackageJson" name="customPackageJson" rows="4" cols="50" style="width: 800px;"></textarea><br><br>
+      <input type="submit" value="Download">
     </form>
     </body>
     </html>
