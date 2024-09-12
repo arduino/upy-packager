@@ -104,9 +104,10 @@ async function writeFile(board, src, dest, data_consumer, chunkSize = 512) {
     }
 
     completeOutput += await board.enter_raw_repl()
-    completeOutput += await board.exec_raw(`f=open('${dest}','wb')\nw=f.write`)
-
-    for (let i = 0; i < contentBuffer.length; i += chunkSize) {
+    completeOutput += await board.exec_raw(`f=open('${dest}','wb')\nw=f.write`)    
+    let i = 0, currentProgress = 0
+    
+    while(i < contentBuffer.length) {
       let slice = Uint8Array.from(contentBuffer.subarray(i, i + chunkSize))
       const crcData = getCRC32(slice);
       const mergedData = new Uint8Array(slice.length + crcData.length);
@@ -119,13 +120,25 @@ async function writeFile(board, src, dest, data_consumer, chunkSize = 512) {
       const crcCorrect = output.slice(2, -5) == '1'
 
       if (!crcCorrect) {
-        completeOutput += await board.exec_raw(`f.close()`)
-        return Promise.reject(new Error(`CRC32 check failed at byte ${i} .. ${i + chunkSize}`))
+        const chunkEndIndex = i + chunkSize
+        chunkSize = Math.floor(chunkSize / 2) // Reduce chunk size by half
+        
+        if(chunkSize < 1) {
+          completeOutput += await board.exec_raw(`f.close()`)
+          return Promise.reject(new Error(`CRC32 check failed at byte ${i} .. ${chunkEndIndex}`))
+        }
+        
+        continue
       } else {
         completeOutput += await board.exec_raw(`w(d[:-4])`)
+        const newProgress = parseInt((i / contentBuffer.length) * 100)
+        if (newProgress != currentProgress) {
+          data_consumer(newProgress + '%')
+          currentProgress = newProgress
+        }
+        i += chunkSize
       }
 
-      data_consumer(parseInt((i / contentBuffer.length) * 100) + '%')
     }
     completeOutput += await board.exec_raw(`f.close()`)
     completeOutput += await board.exit_raw_repl()
