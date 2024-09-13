@@ -98,6 +98,9 @@ class PackageInstaller {
       targetFilePath = path.basename(sourceFilePath);
     }
 
+    const stats = fs.statSync(sourceFilePath);
+    console.debug(`ℹ️ Uploading (${(stats.size / 1024).toFixed(2)} KB)...`);
+
     const start = Date.now();
     await writeFile(this.board, sourceFilePath, targetFilePath, (output) => {
       if (onProgress) {
