@@ -1,7 +1,7 @@
 import MicroPythonBoard from 'micropython.js';
-import { writeFile } from './logic/micropython-extensions.js';
+import { writeFile } from '../logic/micropython-extensions.js';
 
-const sourceFile = '/Users/sebastian/Desktop/E-Paper-Driver-HAT-Schematic.pdf';
+const sourceFile = '~/Desktop/E-Paper-Driver-HAT-Schematic.pdf';
 const board = new MicroPythonBoard();
 await board.open("/dev/cu.usbmodem1234561");
 

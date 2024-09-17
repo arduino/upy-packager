@@ -11,7 +11,7 @@
             "skipFiles": [
                 "<node_internals>/**"
             ],
-            "program": "${workspaceFolder}/install-test.js",
+            "program": "${workspaceFolder}/test/install-test.js",
         },
         {
             "type": "node",
@@ -20,7 +20,7 @@
             "skipFiles": [
                 "<node_internals>/**"
             ],
-            "program": "${workspaceFolder}/compile-test.js",
+            "program": "${workspaceFolder}/test/compile-test.js",
         },
         {
             "type": "node",
@@ -38,7 +38,7 @@
             "skipFiles": [
                 "<node_internals>/**"
             ],
-            "program": "${workspaceFolder}/test-crc.js",
+            "program": "${workspaceFolder}/test/crc-test.js",
         }
     ]
 }

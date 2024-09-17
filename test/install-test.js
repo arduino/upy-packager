@@ -1,4 +1,4 @@
-import { Packager } from "./logic/packager.js";
+import { Packager } from "../logic/packager.js";
 
 const TEST_DATA = {
   "repository": "https://github.com/arduino/arduino-modulino-mpy",
