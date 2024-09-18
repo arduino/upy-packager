@@ -33,8 +33,21 @@ class ArchiveResult {
  * Alternatively, a custom package.json object can be provided.
  */
 class RepositoryArchiver {
-  constructor(repoUrl) {
+  /**
+   * 
+   * @param {string} repoUrl The URL of the repository to archive in the format 'github:owner/repo' or 'gitlab:owner/repo'
+   * or https://github.com/owner/repo or https://gitlab.com/owner/repo
+   * @param {Object} customPackageJson A custom package.json object to use instead of fetching it from the repository.
+   * This is useful when the package.json file is not available in the repository or when the files to download are known in advance.
+   * It can also be used to selectively download files.
+   * @param {string} version The version to archive. Defaults to 'HEAD'.
+   * This is the release version provided by GitHub or GitLab not the version in the package.json file
+   * although they should match.
+   */
+  constructor(repoUrl, customPackageJson = null, version = "HEAD") {
     this.repoUrl = repoUrl;
+    this.customPackageJson = customPackageJson;
+    this.version = version;
   }
 
   /**
@@ -96,7 +109,7 @@ class RepositoryArchiver {
    */
   async downloadFile(fileInfo, targetDirectory, processFileCallback = null) {
     const [targetRelativePath, sourceUrl] = fileInfo;
-    const rawUrl = this.getRawFileURL(sourceUrl);
+    const rawUrl = this.getRawFileURL(sourceUrl, this.version);
     const filePath = path.join(targetDirectory, targetRelativePath);
     await fs.ensureDir(path.dirname(filePath));
 
@@ -178,29 +191,26 @@ class RepositoryArchiver {
   }
 
   /**
-   * Archives the repository by downloading files from it and creating a tar.gz archive.
-   * @param {Object} customPackageJson A custom package.json object to use instead of fetching it from the repository.
-   * This is useful when the package.json file is not available in the repository or when the files to download are known in advance.
-   * It can also be used to selectively download files.
-   * @param {string} targetDirectory The directory to save the archive to.
-   * Defaults to a temporary directory.
+   * Archives the repository by downloading files from it and creating a tar.gz archive.   
    * @param {function} processFileCallback A callback function to process the downloaded file one by one.
    * The callback takes a file path as argument and should return a new file path.
+   * @param {string} targetDirectory The directory to save the archive to.
+   * Defaults to a temporary directory.
    * @returns {ArchiveResult} The result of the archiving process containing the path to the created archive and the package folder.
    * @throws {Error} If an error occurs during the archiving process.
    */
-  async archiveRepository(customPackageJson = null, targetDirectory = null, processFileCallback = null) {
+  async archiveRepository(processFileCallback = null, targetDirectory = null) {
     if(!targetDirectory){
       targetDirectory = await fs.mkdtemp(path.join(os.tmpdir(), 'mpy-package-archive-'));
     }
 
     try {
       let packageJson;
-      if (customPackageJson) {
+      if (this.customPackageJson) {
         packageJson = customPackageJson;
       } else {
         console.debug('🌐 Fetching package.json...');
-        packageJson = await this.fetchPackageJson(this.repoUrl);
+        packageJson = await this.fetchPackageJson(this.repoUrl, this.version);
       }
 
       // Create a temporary directory for downloaded files
@@ -211,8 +221,15 @@ class RepositoryArchiver {
       await Promise.all(downloadPromises);
 
       const packageName = packageJson.name || this.getRepoName();
-      const version = packageJson.version;
-      const tarGzFileName = version ? `${packageName}-${version}.tar.gz` : `${packageName}.tar.gz`;
+      const packageVersion = packageJson.version;
+      const repoVersion = this.version?.replace(/^v/, '');
+      
+      if(packageVersion && repoVersion != "HEAD" && packageVersion !== repoVersion){
+        console.warn(`👀 Version mismatch: package.json version ${packageVersion} does not match the provided version ${this.version}`);
+      }
+      
+      const versionForTarFile = packageVersion || (repoVersion === "HEAD" ? 'latest' : repoVersion);
+      const tarGzFileName = `${packageName}-${versionForTarFile}.tar.gz`;
       const tarGzPath = path.join(targetDirectory, tarGzFileName);
 
       await fs.ensureDir(targetDirectory);
