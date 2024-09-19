@@ -37,17 +37,21 @@ class RepositoryArchiver {
    * 
    * @param {string} repoUrl The URL of the repository to archive in the format 'github:owner/repo' or 'gitlab:owner/repo'
    * or https://github.com/owner/repo or https://gitlab.com/owner/repo
-   * @param {Object} customPackageJson A custom package.json object to use instead of fetching it from the repository.
-   * This is useful when the package.json file is not available in the repository or when the files to download are known in advance.
-   * It can also be used to selectively download files.
    * @param {string} version The version to archive. Defaults to 'HEAD'.
    * This is the release version provided by GitHub or GitLab not the version in the package.json file
    * although they should match.
+   * @param {number} mpyFormat The major version of the mpy file format to use when downloading the files.
+   * This only applies when the files are available in .mpy format from the host.
+   * This is the case for all official micropython-lib packages.
+   * @param {Object} customPackageJson A custom package.json object to use instead of fetching it from the repository.
+   * This is useful when the package.json file is not available in the repository or when the files to download are known in advance.
+   * It can also be used to selectively download files.
    */
-  constructor(repoUrl, customPackageJson = null, version = "HEAD") {
+  constructor(repoUrl, version = "HEAD", mpyFormat, customPackageJson = null,) {
     this.repoUrl = repoUrl;
     this.customPackageJson = customPackageJson;
     this.version = version;
+    this.mpyFormat = mpyFormat;
   }
 
   /**
@@ -62,6 +66,18 @@ class RepositoryArchiver {
   getRawFileURL(url, branch = 'HEAD') {
     if(url.startsWith('https://github.com')){
       url = url.replace('https://github.com/', 'github:');
+    } else if(url.startsWith('https://gitlab.com')){
+      url = url.replace('https://gitlab.com/', 'gitlab:');
+    }
+
+    if(!url.startsWith('github:') && !url.startsWith('gitlab:')){
+      // Transform the URL to the official micropython-lib index format
+      // e.g. https://micropython.org/pi/v2/package/6/mip/latest.json
+      const index = "https://micropython.org/pi/v2/package";
+      // TODO: Implement the logic to transform the URL
+      // package = f"{index}/package/{mpy_version}/{package}/{version}.json"
+      // use this.mpyFormat to get the mpy version
+      throw new Error('Not implemented yet');
     }
     
     const urlParts = url.slice(7).split('/'); // Remove the host part of the URL
@@ -202,6 +218,14 @@ class RepositoryArchiver {
     }
     const downloadPromises = packageJson.urls.map(entry => this.downloadFile(entry, targetDirectory, processFileCallback));
     await Promise.all(downloadPromises);
+
+    if (packageJson.deps) {
+      // for (const dep of packageJson.deps) {
+      //   const [depUrl, depVersion] = dep;
+      //   await this.downloadFilesFromRepository(depUrl, depVersion, targetDirectory, null, processFileCallback);
+      // }
+    }        
+
     return packageJson;
   }
 

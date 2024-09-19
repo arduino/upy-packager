@@ -15,19 +15,20 @@ class Packager {
     /**
      * Packages the repository into a .tar.gz archive for the given architecture and mpy file format
      * @param {string} repositoryUrl The URL of the repository to package
+     * @param {string} version The version of the repository to package.
      * @param {string} architecture The architecture of the board (e.g. 'xtensa')
-     * @param {number} format The major version of the mpy file format (e.g. 6)
+     * @param {number} mpyFormat The major version of the mpy file format (e.g. 6)
      * @param {Object} customPackageJson The custom package.json object.
      * This parameter is optional. If not provided, the package.json file from the repository will be used.
      * @returns {Promise<{ archivePath: string, packageFolder: string }>} A promise that resolves to the path of the archive file
      * and the path of the package folder
      * @throws {Error} If the package cannot be created
      */
-    async packageForArchitectureAndFormat(repositoryUrl, version = "HEAD", architecture, format, customPackageJson = null) {
+    async packageForArchitectureAndFormat(repositoryUrl, version, architecture, mpyFormat, customPackageJson = null) {
         const compiler = new MPyCrossCompiler();
         let downloadedFileCallback = null;
 
-        if (architecture && format && await compiler.supportsMpyFileFormat(format)) {
+        if (architecture && mpyFormat && await compiler.supportsMpyFileFormat(mpyFormat)) {
             downloadedFileCallback = async (filePath) => {
                 const fileName = path.basename(filePath);
                 console.debug(`✅ File downloaded: ${fileName}`);
@@ -36,7 +37,7 @@ class Packager {
             }
         }
 
-        const archiver = new RepositoryArchiver(repositoryUrl, customPackageJson, version);
+        const archiver = new RepositoryArchiver(repositoryUrl, version, mpyFormat, customPackageJson);
         return archiver.archiveRepository(downloadedFileCallback);                        
     }
 
@@ -62,8 +63,8 @@ class Packager {
             }
             console.debug(`🔧 Creating archive from ${repositoryUrl}...`);            
             const architecture = await getArchitectureFromBoard(this.board);
-            const format = await getMPyFileFormatFromBoard(this.board);
-            archiveResult = await this.packageForArchitectureAndFormat(repositoryUrl, version, architecture, format, customPackageJson);
+            const mpyFormat = await getMPyFileFormatFromBoard(this.board);
+            archiveResult = await this.packageForArchitectureAndFormat(repositoryUrl, version, architecture, mpyFormat, customPackageJson);
             console.debug(`✅ Archive created: ${archiveResult.archivePath}`);
         } catch (error) {
             throw new Error(`Couldn't package archive: ${error.message}`);
