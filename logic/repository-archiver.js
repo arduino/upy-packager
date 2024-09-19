@@ -190,6 +190,21 @@ class RepositoryArchiver {
     }
   }
 
+  async downloadFilesFromRepository(repoUrl, version = "HEAD", targetDirectory, customPackageJson = null, processFileCallback = null) {
+    console.debug(`🌐 Downloading files from ${repoUrl}...`);
+    let packageJson;
+
+    if (customPackageJson) {
+      packageJson = customPackageJson;
+    } else {
+      console.debug('🌐 Fetching package.json...');
+      packageJson = await this.fetchPackageJson(repoUrl, version);
+    }
+    const downloadPromises = packageJson.urls.map(entry => this.downloadFile(entry, targetDirectory, processFileCallback));
+    await Promise.all(downloadPromises);
+    return packageJson;
+  }
+
   /**
    * Archives the repository by downloading files from it and creating a tar.gz archive.   
    * @param {function} processFileCallback A callback function to process the downloaded file one by one.
@@ -205,20 +220,10 @@ class RepositoryArchiver {
     }
 
     try {
-      let packageJson;
-      if (this.customPackageJson) {
-        packageJson = customPackageJson;
-      } else {
-        console.debug('🌐 Fetching package.json...');
-        packageJson = await this.fetchPackageJson(this.repoUrl, this.version);
-      }
-
       // Create a temporary directory for downloaded files
       const downloadedFilesDirectory = await fs.mkdtemp(path.join(os.tmpdir(), 'downloaded_files-'));
 
-      console.debug('🌐 Downloading files from repository...');
-      const downloadPromises = packageJson.urls.map(entry => this.downloadFile(entry, downloadedFilesDirectory, processFileCallback));
-      await Promise.all(downloadPromises);
+      let packageJson = await this.downloadFilesFromRepository(this.repoUrl, this.version, downloadedFilesDirectory, this.customPackageJson, processFileCallback);
 
       const packageName = packageJson.name || this.getRepoName();
       const packageVersion = packageJson.version;
