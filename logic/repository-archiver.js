@@ -6,6 +6,7 @@ import { pipeline } from 'stream';
 import { promisify } from 'util';
 
 const pipe = promisify(pipeline);
+const MICROPYTHON_LIB_INDEX = "https://micropython.org/pi/v2";
 
 // SEE: https://github.com/micropython/micropython/blob/master/tools/mpremote/mpremote/mip.py
 
@@ -20,6 +21,7 @@ class ArchiveResult {
    * Creates a new ArchiveResult object
    * @param {string} archivePath The path to the created archive
    * @param {string} packageFolder The common folder of the target paths in the package.json file
+   * e.g. 'modulino' in ["modulino/buttons.py", "github:arduino/modulino-mpy/src/modulino/buttons.py"]
    */
   constructor(archivePath, packageFolder) {
     this.archivePath = archivePath;
@@ -37,7 +39,7 @@ class RepositoryArchiver {
    * 
    * @param {string} repoUrl The URL of the repository to archive in the format 'github:owner/repo' or 'gitlab:owner/repo'
    * or https://github.com/owner/repo or https://gitlab.com/owner/repo
-   * @param {string} version The version to archive. Defaults to 'HEAD'.
+   * @param {string} version The version to archive. Defaults to HEAD version.
    * This is the release version provided by GitHub or GitLab not the version in the package.json file
    * although they should match.
    * @param {number} mpyFormat The major version of the mpy file format to use when downloading the files.
@@ -47,10 +49,10 @@ class RepositoryArchiver {
    * This is useful when the package.json file is not available in the repository or when the files to download are known in advance.
    * It can also be used to selectively download files.
    */
-  constructor(repoUrl, version = "HEAD", mpyFormat, customPackageJson = null,) {
+  constructor(repoUrl, version = null, mpyFormat = null, customPackageJson = null,) {
     this.repoUrl = repoUrl;
     this.customPackageJson = customPackageJson;
-    this.version = version;
+    this.version = version || 'HEAD';
     this.mpyFormat = mpyFormat;
   }
 
@@ -71,13 +73,7 @@ class RepositoryArchiver {
     }
 
     if(!url.startsWith('github:') && !url.startsWith('gitlab:')){
-      // Transform the URL to the official micropython-lib index format
-      // e.g. https://micropython.org/pi/v2/package/6/mip/latest.json
-      const index = "https://micropython.org/pi/v2/package";
-      // TODO: Implement the logic to transform the URL
-      // package = f"{index}/package/{mpy_version}/{package}/{version}.json"
-      // use this.mpyFormat to get the mpy version
-      throw new Error('Not implemented yet');
+      return url; // Assume it's already a raw file URL
     }
     
     const urlParts = url.slice(7).split('/'); // Remove the host part of the URL
@@ -95,11 +91,11 @@ class RepositoryArchiver {
 
   /**
    * Fetches the package.json file from the given repository URL and branch
-   * @param {string} repositoryUrl The URL of the repository in https:// format
-   * @param {string} branch The branch to use when fetching the package.json file. Defaults to 'HEAD'.
+   * @param {string} repositoryUrl The URL of the repository in https:// or github: or gitlab: format.
+   * @param {string} branch The branch to use when fetching the package.json file.
    * @returns 
    */
-  async fetchPackageJson(repositoryUrl, branch = 'HEAD') {
+  async fetchPackageJson(repositoryUrl, branch) {
     const packageJsonUrl = this.getRawFileURL(`${repositoryUrl}/package.json`, branch);
 
     try {
@@ -120,12 +116,15 @@ class RepositoryArchiver {
    * @param {Array} fileInfo The file info array containing the target path and the source URL
    * The format is [targetRelativePath, sourceUrl] e.g. ['modulino/__init__.py', 'github:arduino/modulino-mpy/src/modulino/__init__.py']
    * @param {string} targetDirectory The local directory to save the file to.
+   * @param {string} version The version to use when downloading the file.
+   * This does not apply when downloading files from the official micropython-lib index which
+   * use a different versioning scheme.
    * @param {async function} processFileCallback An async callback function to process the downloaded file.
    * The callback takes a file path as argument and should return a new file path.
    */
-  async downloadFile(fileInfo, targetDirectory, processFileCallback = null) {
+  async downloadFile(fileInfo, targetDirectory, version = null, processFileCallback = null) {
     const [targetRelativePath, sourceUrl] = fileInfo;
-    const rawUrl = this.getRawFileURL(sourceUrl, this.version);
+    const rawUrl = this.getRawFileURL(sourceUrl, version);
     const filePath = path.join(targetDirectory, targetRelativePath);
     await fs.ensureDir(path.dirname(filePath));
 
@@ -206,7 +205,55 @@ class RepositoryArchiver {
     }
   }
 
-  async downloadFilesFromRepository(repoUrl, version = "HEAD", targetDirectory, customPackageJson = null, processFileCallback = null) {
+  /**
+   * Downloads files from the official micropython-lib index
+   * Doesn't support file processing as official micropython-lib packages are already in .mpy format
+   * @param {string} packageName The name of the package to download e.g. 'senml'
+   * @param {string} version The version of the package to download e.g. '1.0.0'
+   * @param {string} targetDirectory The directory to save the files to.
+   * Subdirectories will be created for the package if specified in the package file.
+   */
+  async downloadFilesFromIndex(packageName, version, targetDirectory){
+    version ||= 'latest'; // Default to latest version
+    const mpyFormat = this.mpyFormat || 'py'; // Use plain .py format unless mpy format is specified
+    console.debug(`🌐 Downloading package '${packageName}' ${version} from index...`);
+    const packageURL = `${MICROPYTHON_LIB_INDEX}/package/${mpyFormat}/${packageName}/${version}.json`;
+    const response = await fetch(packageURL);
+    let packageJson;
+
+    try {
+      if (!response.ok) {
+        throw new Error(`Failed to fetch package index: ${response.statusText}`);
+      }
+      packageJson = await response.json();
+    } catch (error) {
+      throw new Error('Failed to fetch package index: ' + error.message);
+    }
+
+    const downloadPromises = packageJson.hashes.map(hashData => {
+      const [targetPath, hash] = hashData;
+      const fileURL = `${MICROPYTHON_LIB_INDEX}/file/${hash.slice(0, 2)}/${hash}`;
+      const fileInfo = [targetPath, fileURL];
+      return this.downloadFile(fileInfo, targetDirectory);
+    });
+    await Promise.all(downloadPromises);
+  }
+
+  /**
+   * Downloads files from the given repository URL and version
+   * @param {string} repoUrl The URL of the repository in https:// or github: or gitlab: format.
+   * @param {string} version The release version to download. Works with branch names
+   * and release tags.
+   * @param {string} targetDirectory The directory to save the files to.
+   * @param {Object} customPackageJson A custom package.json object to use instead of fetching it from the repository.
+   * This is useful when the package.json file is not available in the repository or when the files to download are known in advance.
+   * It can also be used to selectively download files.
+   * @param {async function} processFileCallback An async callback function to process the downloaded file.
+   * The callback takes a file path as argument and should return a new file path.
+   * @returns {Object} The package.json object containing the URLs and dependencies.
+   * @throws {Error} If an error occurs during the download process.
+   */
+  async downloadFilesFromRepository(repoUrl, version, targetDirectory, customPackageJson = null, processFileCallback = null) {
     console.debug(`🌐 Downloading files from ${repoUrl}...`);
     let packageJson;
 
@@ -216,14 +263,20 @@ class RepositoryArchiver {
       console.debug('🌐 Fetching package.json...');
       packageJson = await this.fetchPackageJson(repoUrl, version);
     }
-    const downloadPromises = packageJson.urls.map(entry => this.downloadFile(entry, targetDirectory, processFileCallback));
+    const downloadPromises = packageJson.urls.map(entry => this.downloadFile(entry, targetDirectory, this.version, processFileCallback));
     await Promise.all(downloadPromises);
 
     if (packageJson.deps) {
-      // for (const dep of packageJson.deps) {
-      //   const [depUrl, depVersion] = dep;
-      //   await this.downloadFilesFromRepository(depUrl, depVersion, targetDirectory, null, processFileCallback);
-      // }
+      for (const dep of packageJson.deps) {
+        const [depUrl, depVersion] = dep;
+        
+        const isCustomPackage = depUrl.startsWith('github:') || depUrl.startsWith('gitlab:') || depUrl.startsWith('http://') || depUrl.startsWith('https://')
+        if(isCustomPackage){
+          await this.downloadFilesFromRepository(depUrl, depVersion, targetDirectory, null, processFileCallback);
+        } else {
+          await this.downloadFilesFromIndex(depUrl, depVersion, targetDirectory);
+        }
+      }
     }        
 
     return packageJson;
