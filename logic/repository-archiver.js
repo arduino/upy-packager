@@ -219,24 +219,27 @@ class RepositoryArchiver {
    * It can also be used to selectively download files.
    * @param {async function} processFileCallback An async callback function to process the downloaded file.
    * The callback takes a file path as argument and should return a new file path.
-   * @returns {Object} The package.json object containing the URLs and dependencies.
+   * @returns {Array} An array of package.json objects containing the URLs and dependencies.
    * @throws {Error} If an error occurs during the download process.
    */
   async downloadFilesFromUrl(url, version, targetDirectory, customPackageJson = null, processFileCallback = null) {
+    let packageJsonFiles = [];
     let packageJson  
     if (this.isCustomPackage(url)) {
       packageJson = await this.downloadFilesFromRepository(url, version, targetDirectory, customPackageJson, processFileCallback);
     } else {
       packageJson = await this.downloadFilesFromIndex(url, version, targetDirectory);
     }
+    packageJsonFiles.push(packageJson);
 
     if (packageJson.deps) {
       for (const dep of packageJson.deps) {
         const [depUrl, depVersion] = dep;
-        await this.downloadFilesFromUrl(depUrl, depVersion, targetDirectory, null, processFileCallback); 
+        const depPackageJsonFiles = await this.downloadFilesFromUrl(depUrl, depVersion, targetDirectory, null, processFileCallback); 
+        packageJsonFiles.push(...depPackageJsonFiles);        
       }
     }
-    return packageJson;
+    return packageJsonFiles;
   }
 
 
@@ -333,14 +336,15 @@ class RepositoryArchiver {
     try {
       // Create a temporary directory for downloaded files
       const downloadedFilesDirectory = await fs.mkdtemp(path.join(os.tmpdir(), 'downloaded_files-'));
+            
+      const allPackageJsonData = await this.downloadFilesFromUrl(this.repoUrl, this.version, downloadedFilesDirectory, this.customPackageJson, processFileCallback);
+      const mainPackageJson = allPackageJsonData[0]; // Use the first package.json file
 
-      let packageJson = await this.downloadFilesFromUrl(this.repoUrl, this.version, downloadedFilesDirectory, this.customPackageJson, processFileCallback);
-
-      const packageName = packageJson.name || this.getRepoName();
-      const packageVersion = packageJson.version;
-      const repoVersion = this.version?.replace(/^v/, '');
+      const packageName = mainPackageJson.name || this.getRepoName();
+      const packageVersion = mainPackageJson.version;
+      const repoVersion = this.version?.replace(/^v/, '') || 'HEAD';
       
-      if(packageVersion && repoVersion && repoVersion != "HEAD" && packageVersion !== repoVersion){
+      if(packageVersion && repoVersion != "HEAD" && packageVersion !== repoVersion){
         console.warn(`👀 Version mismatch: package.json version ${packageVersion} does not match the provided version ${this.version}`);
       }
       
@@ -355,7 +359,7 @@ class RepositoryArchiver {
 
       // Clean up: Remove the temporary directory
       await fs.remove(downloadedFilesDirectory);
-      return new ArchiveResult(tarGzPath, this.getPackageFolder(packageJson));
+      return new ArchiveResult(tarGzPath, this.getPackageFolder(mainPackageJson));
     } catch (error) {
       console.error('Error:', error.message);
       throw error;
