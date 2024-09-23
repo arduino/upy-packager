@@ -149,7 +149,13 @@ class PackageInstaller {
     await this.board.exit_raw_repl()
 
     if (output.includes('[Errno 17] EEXIST')) {
-      throw new Error('Failed to extract archive because file(s) already exists');
+      // Find out which folders already exist from the output e.g. 'Creating directory lib/arduino_iot_cloud\r\n'
+      const regex = new RegExp(/Creating directory (\S*)\r\n/g);
+      const createdFolders = Array.from(output.matchAll(regex), m => m[1]);
+
+      // Last folder is the one that failed to be created
+      const failedFolder = createdFolders[createdFolders.length - 1];
+      throw new Error(`Failed to extract archive because file(s) already exists: ${failedFolder}`);
     }
 
     if (!output.includes('Extraction complete')) {
@@ -171,7 +177,7 @@ class PackageInstaller {
     let targetFilePath;
 
     try {
-      if (overwriteExisting && await this.packageFolderExists(packageFolder)) {
+      if (overwriteExisting && packageFolder && await this.packageFolderExists(packageFolder)) {
         console.debug(`🗑 Deleting existing package folder: ${packageFolder}`);
         await this.deletePackageFolder(packageFolder);
       }

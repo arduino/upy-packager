@@ -12,6 +12,11 @@
                 "<node_internals>/**"
             ],
             "program": "${workspaceFolder}/test/install-test.js",
+            "args": [
+                "https://github.com/arduino/arduino-iot-cloud-py",
+                // "ssd1306",
+                "/dev/cu.usbmodem1234561"
+            ]
         },
         {
             "type": "node",

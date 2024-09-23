@@ -99,7 +99,7 @@ class Packager {
                 console.debug(`Progress: ${progress}%`);
             });
         } catch (error) {
-            throw new Error(`Couldn't install package: ${error.message}`);
+            throw error;
         } finally {
             console.debug('🧹 Cleaning up local archive file...');
             fs.removeSync(tarFilePath);

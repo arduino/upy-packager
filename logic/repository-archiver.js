@@ -39,7 +39,7 @@ class RepositoryArchiver {
    * 
    * @param {string} repoUrl The URL of the repository to archive in the format 'github:owner/repo' or 'gitlab:owner/repo'
    * or https://github.com/owner/repo or https://gitlab.com/owner/repo
-   * @param {string} version The version to archive. Defaults to HEAD version.
+   * @param {string} version The version to archive.
    * This is the release version provided by GitHub or GitLab not the version in the package.json file
    * although they should match.
    * @param {number} mpyFormat The major version of the mpy file format to use when downloading the files.
@@ -52,7 +52,7 @@ class RepositoryArchiver {
   constructor(repoUrl, version = null, mpyFormat = null, customPackageJson = null,) {
     this.repoUrl = repoUrl;
     this.customPackageJson = customPackageJson;
-    this.version = version || 'HEAD';
+    this.version = version;
     this.mpyFormat = mpyFormat;
   }
 
@@ -183,7 +183,8 @@ class RepositoryArchiver {
    * @returns {string} The common folder of the target paths in the package.json file
    */
   getPackageFolder(packageJsonData) {
-    const targetPaths = packageJsonData.urls.map(entry => entry[0]);
+    const targetProperty = packageJsonData.urls ? 'urls' : 'hashes';
+    const targetPaths = packageJsonData[targetProperty].map(entry => entry[0]);
     const folders = targetPaths.map(entry => {
       const parts = entry.split('/')
       if (parts.length > 1) {
@@ -193,7 +194,7 @@ class RepositoryArchiver {
     }).filter(folder => folder !== null);
     
     if (folders.length === 0) {
-      throw new Error('The target paths in package.json do not contain any folders. Please ensure all files are in a folder.');
+      return null;
     }
     
     // Check if all target paths have the same folder
@@ -206,6 +207,40 @@ class RepositoryArchiver {
   }
 
   /**
+   * Downloads files from the given URL and version.
+   * If it's a custom package, it downloads the files from the repository, if it's an official micropython-lib package,
+   * it downloads the files from the official micropython-lib index.
+   * @param {string} url The URL of the repository in https:// or github: or gitlab: format or a package name from the official micropython-lib index.
+   * @param {string} version The release version to download. Works with branch names
+   * and release tags.
+   * @param {string} targetDirectory The directory to save the files to.
+   * @param {Object} customPackageJson A custom package.json object to use instead of fetching it from the repository.
+   * This is useful when the package.json file is not available in the repository or when the files to download are known in advance.
+   * It can also be used to selectively download files.
+   * @param {async function} processFileCallback An async callback function to process the downloaded file.
+   * The callback takes a file path as argument and should return a new file path.
+   * @returns {Object} The package.json object containing the URLs and dependencies.
+   * @throws {Error} If an error occurs during the download process.
+   */
+  async downloadFilesFromUrl(url, version, targetDirectory, customPackageJson = null, processFileCallback = null) {
+    let packageJson  
+    if (this.isCustomPackage(url)) {
+      packageJson = await this.downloadFilesFromRepository(url, version, targetDirectory, customPackageJson, processFileCallback);
+    } else {
+      packageJson = await this.downloadFilesFromIndex(url, version, targetDirectory);
+    }
+
+    if (packageJson.deps) {
+      for (const dep of packageJson.deps) {
+        const [depUrl, depVersion] = dep;
+        await this.downloadFilesFromUrl(depUrl, depVersion, targetDirectory, null, processFileCallback); 
+      }
+    }
+    return packageJson;
+  }
+
+
+  /**
    * Downloads files from the official micropython-lib index
    * Doesn't support file processing as official micropython-lib packages are already in .mpy format
    * @param {string} packageName The name of the package to download e.g. 'senml'
@@ -216,7 +251,7 @@ class RepositoryArchiver {
   async downloadFilesFromIndex(packageName, version, targetDirectory){
     version ||= 'latest'; // Default to latest version
     const mpyFormat = this.mpyFormat || 'py'; // Use plain .py format unless mpy format is specified
-    console.debug(`🌐 Downloading package '${packageName}' ${version} from index...`);
+    console.debug(`🌐 Downloading package '${packageName}' ${version} from ${MICROPYTHON_LIB_INDEX}...`);
     const packageURL = `${MICROPYTHON_LIB_INDEX}/package/${mpyFormat}/${packageName}/${version}.json`;
     const response = await fetch(packageURL);
     let packageJson;
@@ -237,6 +272,7 @@ class RepositoryArchiver {
       return this.downloadFile(fileInfo, targetDirectory);
     });
     await Promise.all(downloadPromises);
+    return packageJson;
   }
 
   /**
@@ -254,7 +290,8 @@ class RepositoryArchiver {
    * @throws {Error} If an error occurs during the download process.
    */
   async downloadFilesFromRepository(repoUrl, version, targetDirectory, customPackageJson = null, processFileCallback = null) {
-    console.debug(`🌐 Downloading files from ${repoUrl}...`);
+    version ||= 'HEAD'; // Defaults to HEAD branch
+    console.debug(`🌐 Downloading files from ${repoUrl} version ${version}...`);
     let packageJson;
 
     if (customPackageJson) {
@@ -263,23 +300,20 @@ class RepositoryArchiver {
       console.debug('🌐 Fetching package.json...');
       packageJson = await this.fetchPackageJson(repoUrl, version);
     }
-    const downloadPromises = packageJson.urls.map(entry => this.downloadFile(entry, targetDirectory, this.version, processFileCallback));
+    const downloadPromises = packageJson.urls.map(entry => this.downloadFile(entry, targetDirectory, version, processFileCallback));
     await Promise.all(downloadPromises);
-
-    if (packageJson.deps) {
-      for (const dep of packageJson.deps) {
-        const [depUrl, depVersion] = dep;
-        
-        const isCustomPackage = depUrl.startsWith('github:') || depUrl.startsWith('gitlab:') || depUrl.startsWith('http://') || depUrl.startsWith('https://')
-        if(isCustomPackage){
-          await this.downloadFilesFromRepository(depUrl, depVersion, targetDirectory, null, processFileCallback);
-        } else {
-          await this.downloadFilesFromIndex(depUrl, depVersion, targetDirectory);
-        }
-      }
-    }        
-
     return packageJson;
+  }
+
+  /**
+   * Determines if the given dependency URL is a custom package meaning
+   * it doesn't refer to an official micropython-lib package.
+   * @param {string} url A repository URL in the format 'github:owner/repo' or 'gitlab:owner/repo'
+   * or 'http://example.com/folder' or 'https://github.com/owner/repo' or 'https://gitlab.com/owner/repo'
+   * @returns True if the dependency URL is a custom package, false otherwise.
+   */
+  isCustomPackage(url) {
+    return url.startsWith('github:') || url.startsWith('gitlab:') || url.startsWith('http://') || url.startsWith('https://');
   }
 
   /**
@@ -300,13 +334,13 @@ class RepositoryArchiver {
       // Create a temporary directory for downloaded files
       const downloadedFilesDirectory = await fs.mkdtemp(path.join(os.tmpdir(), 'downloaded_files-'));
 
-      let packageJson = await this.downloadFilesFromRepository(this.repoUrl, this.version, downloadedFilesDirectory, this.customPackageJson, processFileCallback);
+      let packageJson = await this.downloadFilesFromUrl(this.repoUrl, this.version, downloadedFilesDirectory, this.customPackageJson, processFileCallback);
 
       const packageName = packageJson.name || this.getRepoName();
       const packageVersion = packageJson.version;
       const repoVersion = this.version?.replace(/^v/, '');
       
-      if(packageVersion && repoVersion != "HEAD" && packageVersion !== repoVersion){
+      if(packageVersion && repoVersion && repoVersion != "HEAD" && packageVersion !== repoVersion){
         console.warn(`👀 Version mismatch: package.json version ${packageVersion} does not match the provided version ${this.version}`);
       }
       
