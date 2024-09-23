@@ -1,7 +1,7 @@
 import MicroPythonBoard from 'micropython.js';
 import path from 'path';
 import fs from 'fs-extra';
-import { RepositoryArchiver } from './repository-archiver.js';
+import { ArchiveResult, RepositoryArchiver } from './repository-archiver.js';
 import { PackageInstaller } from './package-installer.js';
 import { MPyCrossCompiler } from './mpy-cross-compiler.js';
 import { getArchitectureFromBoard, getMPyFileFormatFromBoard } from './board-helpers.js';
@@ -20,7 +20,8 @@ class Packager {
      * @param {number} mpyFormat The major version of the mpy file format (e.g. 6)
      * @param {Object} customPackageJson The custom package.json object.
      * This parameter is optional. If not provided, the package.json file from the repository will be used.
-     * @returns {Promise<{ archivePath: string, packageFolder: string }>} A promise that resolves to the path of the archive file
+     * @returns {Promise<ArchiveResult>} A promise that resolves to the result of the archive operation,
+     * including the path of the archive file and the package folders.
      * and the path of the package folder
      * @throws {Error} If the package cannot be created
      */
@@ -50,7 +51,8 @@ class Packager {
      * @param {Object} customPackageJson The custom package.json object.
      * This parameter is optional. If not provided, the package.json file from the repository will be used.
      * @param {boolean} closePort Whether to close the serial port after packaging the repository. Defaults to true.
-     * @returns {Promise<{ archivePath: string, packageFolder: string }>} A promise that resolves to the path of the archive file
+     * @returns {Promise<ArchiveResult>} A promise that resolves to the result of the archive operation,
+     * including the path of the archive file, the package folders.
      * and the path of the package folder.
      * @throws {Error} If the package cannot be created
      */
@@ -90,12 +92,12 @@ class Packager {
         }
 
         const archiveResult = await this.package(repositoryUrl, version, customPackageJson, false);
-        const packageFolder = archiveResult.packageFolder;
+        const packageFolders = archiveResult.packageFolders;
         const tarFilePath = archiveResult.archivePath;
         const packageInstaller = new PackageInstaller(this.board);
         
         try {
-            await packageInstaller.installPackage(tarFilePath, packageFolder, overwriteExisting, (progress) => {
+            await packageInstaller.installPackage(tarFilePath, packageFolders, overwriteExisting, (progress) => {
                 console.debug(`Progress: ${progress}%`);
             });
         } catch (error) {

@@ -167,19 +167,26 @@ class PackageInstaller {
    * Installs a package on the board by uploading the package tar file, extracting it and cleaning up
    * the tar file that was uploaded and is no longer needed.
    * @param {string} packageTarFilePath The source package tar file path
-   * @param {string} packageFolder The package folder name where the package is expected to be extracted to
+   * @param {Array} packageFolders The package folder names where the package and its dependencies
+   * are expected to be extracted to.
    * Note that changing this does not extract the package to a different folder.
    * However it is needed to check if the package folder already exists on the board in case of overwriting.
-   * @param {boolean} overwriteExisting 
-   * @param {function} onProgress 
+   * @param {boolean} overwriteExisting Whether to overwrite existing package folders on the board.
+   * Defaults to true. Please note that single files are always overwritten as they
+   * are not checked for existence.
+   * @param {function} onProgress An optional callback function to track the upload progress.
+   * The callback takes an integer argument representing the percentage of the upload progress.
    */
-  async installPackage(packageTarFilePath, packageFolder, overwriteExisting = false, onProgress = null) {
+  async installPackage(packageTarFilePath, packageFolders, overwriteExisting = true, onProgress = null) {
     let targetFilePath;
 
     try {
-      if (overwriteExisting && packageFolder && await this.packageFolderExists(packageFolder)) {
-        console.debug(`🗑 Deleting existing package folder: ${packageFolder}`);
-        await this.deletePackageFolder(packageFolder);
+      if (overwriteExisting && packageFolders) {
+        for(const packageFolder of packageFolders) {
+          if(!await this.packageFolderExists(packageFolder)) continue;
+          console.debug(`🗑 Deleting existing package folder: ${packageFolder}`);
+          await this.deletePackageFolder(packageFolder);
+        }
       }
       
       console.debug('📤 Uploading file to board');

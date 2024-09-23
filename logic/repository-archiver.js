@@ -20,12 +20,13 @@ class ArchiveResult {
   /**
    * Creates a new ArchiveResult object
    * @param {string} archivePath The path to the created archive
-   * @param {string} packageFolder The common folder of the target paths in the package.json file
+   * @param {Array} packageFolders The common folder of the target paths in the package.json file
    * e.g. 'modulino' in ["modulino/buttons.py", "github:arduino/modulino-mpy/src/modulino/buttons.py"]
+   * for all packages in the archive. This includes dependencies.
    */
-  constructor(archivePath, packageFolder) {
+  constructor(archivePath, packageFolders) {
     this.archivePath = archivePath;
-    this.packageFolder = packageFolder;
+    this.packageFolders = packageFolders;
   }
 }
 
@@ -175,14 +176,14 @@ class RepositoryArchiver {
   }
 
   /**
-   * Extracts the common folder of the target paths in the package.json file
+   * Extracts the common folders of the target paths in the package.json file
    * This is useful to determine the target folder when extracting the archive on the board
    * E.g. if the target paths are ['modulino/__init__.py', 'modulino/buttons.py']
    * the common folder is 'modulino'.
    * @param {Object} packageJsonData 
-   * @returns {string} The common folder of the target paths in the package.json file
+   * @returns {Array<string>} The common folders of the target paths in the package.json file
    */
-  getPackageFolder(packageJsonData) {
+  getPackageFolders(packageJsonData) {
     const targetProperty = packageJsonData.urls ? 'urls' : 'hashes';
     const targetPaths = packageJsonData[targetProperty].map(entry => entry[0]);
     const folders = targetPaths.map(entry => {
@@ -193,17 +194,8 @@ class RepositoryArchiver {
       return null;
     }).filter(folder => folder !== null);
     
-    if (folders.length === 0) {
-      return null;
-    }
-    
-    // Check if all target paths have the same folder
-    if (folders.every(folder => folder === folders[0])) {
-      return folders[0];
-    } else {
-      // If the target paths have different folders, throw an error
-      throw new Error('The target paths in package.json have different folders. Please ensure all files are in the same folder.');
-    }
+    // Filter out duplicates
+    return [...new Set(folders)];
   }
 
   /**
@@ -325,7 +317,7 @@ class RepositoryArchiver {
    * The callback takes a file path as argument and should return a new file path.
    * @param {string} targetDirectory The directory to save the archive to.
    * Defaults to a temporary directory.
-   * @returns {ArchiveResult} The result of the archiving process containing the path to the created archive and the package folder.
+   * @returns {ArchiveResult} The result of the archiving process containing the path to the created archive and the package folders.
    * @throws {Error} If an error occurs during the archiving process.
    */
   async archiveRepository(processFileCallback = null, targetDirectory = null) {
@@ -340,6 +332,7 @@ class RepositoryArchiver {
       const allPackageJsonData = await this.downloadFilesFromUrl(this.repoUrl, this.version, downloadedFilesDirectory, this.customPackageJson, processFileCallback);
       const mainPackageJson = allPackageJsonData[0]; // Use the first package.json file
 
+      const allPackageFolders = allPackageJsonData.map(packageJsonData => this.getPackageFolders(packageJsonData)).flat();
       const packageName = mainPackageJson.name || this.getRepoName();
       const packageVersion = mainPackageJson.version;
       const repoVersion = this.version?.replace(/^v/, '') || 'HEAD';
@@ -351,15 +344,14 @@ class RepositoryArchiver {
       const versionForTarFile = packageVersion || (repoVersion === "HEAD" ? 'latest' : repoVersion);
       const tarGzFileName = `${packageName}-${versionForTarFile}.tar.gz`;
       const tarGzPath = path.join(targetDirectory, tarGzFileName);
-
-      await fs.ensureDir(targetDirectory);
-
+      
       console.debug('📁 Creating tar.gz archive...');
-      await this.createTarGzArchive(downloadedFilesDirectory, tarGzPath);
+      await fs.ensureDir(targetDirectory);
+      await this.createTarGzArchive(downloadedFilesDirectory, tarGzPath);      
 
       // Clean up: Remove the temporary directory
       await fs.remove(downloadedFilesDirectory);
-      return new ArchiveResult(tarGzPath, this.getPackageFolder(mainPackageJson));
+      return new ArchiveResult(tarGzPath, allPackageFolders);
     } catch (error) {
       console.error('Error:', error.message);
       throw error;
