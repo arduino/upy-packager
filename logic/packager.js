@@ -92,12 +92,12 @@ class Packager {
         }
 
         const archiveResult = await this.package(repositoryUrl, version, customPackageJson, false);
-        const packageFolders = archiveResult.packageFolders;
+        const packageFiles = archiveResult.packageFiles;
         const tarFilePath = archiveResult.archivePath;
         const packageInstaller = new PackageInstaller(this.board);
         
         try {
-            await packageInstaller.installPackage(tarFilePath, packageFolders, overwriteExisting, (progress) => {
+            await packageInstaller.installPackage(tarFilePath, packageFiles, overwriteExisting, (progress) => {
                 console.debug(`Progress: ${progress}%`);
             });
         } catch (error) {

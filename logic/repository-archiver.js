@@ -20,13 +20,11 @@ class ArchiveResult {
   /**
    * Creates a new ArchiveResult object
    * @param {string} archivePath The path to the created archive
-   * @param {Array} packageFolders The common folder of the target paths in the package.json file
-   * e.g. 'modulino' in ["modulino/buttons.py", "github:arduino/modulino-mpy/src/modulino/buttons.py"]
-   * for all packages in the archive. This includes dependencies.
+   * @param {Array} packageFiles The target file paths of all files in the archive.
    */
-  constructor(archivePath, packageFolders) {
+  constructor(archivePath, packageFiles) {
     this.archivePath = archivePath;
-    this.packageFolders = packageFolders;
+    this.packageFiles = packageFiles;
   }
 }
 
@@ -176,26 +174,14 @@ class RepositoryArchiver {
   }
 
   /**
-   * Extracts the common folders of the target paths in the package.json file
-   * This is useful to determine the target folder when extracting the archive on the board
-   * E.g. if the target paths are ['modulino/__init__.py', 'modulino/buttons.py']
-   * the common folder is 'modulino'.
-   * @param {Object} packageJsonData 
-   * @returns {Array<string>} The common folders of the target paths in the package.json file
+   * Extracts the target files from the package.json data
+   * @param {Object} packageJsonData The package.json data object
+   * @returns {Array<string>} The target files in the package.json data object
+   * e.g. ['modulino/__init__.py', 'github:arduino/modulino/src/__init__.py'] -> modulino/__init__.py
    */
-  getPackageFolders(packageJsonData) {
+  getPackageFiles(packageJsonData) {
     const targetProperty = packageJsonData.urls ? 'urls' : 'hashes';
-    const targetPaths = packageJsonData[targetProperty].map(entry => entry[0]);
-    const folders = targetPaths.map(entry => {
-      const parts = entry.split('/')
-      if (parts.length > 1) {
-        return parts[0];
-      }
-      return null;
-    }).filter(folder => folder !== null);
-    
-    // Filter out duplicates
-    return [...new Set(folders)];
+    return packageJsonData[targetProperty].map(entry => entry[0]);
   }
 
   /**
@@ -332,7 +318,7 @@ class RepositoryArchiver {
       const allPackageJsonData = await this.downloadFilesFromUrl(this.repoUrl, this.version, downloadedFilesDirectory, this.customPackageJson, processFileCallback);
       const mainPackageJson = allPackageJsonData[0]; // Use the first package.json file
 
-      const allPackageFolders = allPackageJsonData.map(packageJsonData => this.getPackageFolders(packageJsonData)).flat();
+      const allPackageFiles = allPackageJsonData.map(packageJsonData => this.getPackageFiles(packageJsonData)).flat();
       const packageName = mainPackageJson.name || this.getRepoName();
       const packageVersion = mainPackageJson.version;
       const repoVersion = this.version?.replace(/^v/, '') || 'HEAD';
@@ -351,7 +337,7 @@ class RepositoryArchiver {
 
       // Clean up: Remove the temporary directory
       await fs.remove(downloadedFilesDirectory);
-      return new ArchiveResult(tarGzPath, allPackageFolders);
+      return new ArchiveResult(tarGzPath, allPackageFiles);
     } catch (error) {
       console.error('Error:', error.message);
       throw error;

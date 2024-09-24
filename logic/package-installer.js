@@ -164,23 +164,49 @@ class PackageInstaller {
   }
 
   /**
+   * Extracts the common folders of the target paths in the package.json file
+   * This is useful to determine the target folder when extracting the archive on the board
+   * E.g. if the target paths are ['modulino/__init__.py', 'modulino/buttons.py']
+   * the common folder is 'modulino'.
+   * @param {Array<string>} targetPaths The target paths of all files in the package.
+   * @returns {Array<string>} The common folders of the target paths in the package.json file
+   */
+  getPackageFolders(targetPaths) {
+    const folders = targetPaths.map(entry => {
+      const parts = entry.split('/')
+      if (parts.length > 1) {
+        return parts[0];
+      }
+      return null;
+    }).filter(folder => folder !== null);
+    
+    // Filter out duplicates
+    return [...new Set(folders)];
+  }
+
+  /**
    * Installs a package on the board by uploading the package tar file, extracting it and cleaning up
    * the tar file that was uploaded and is no longer needed.
    * @param {string} packageTarFilePath The source package tar file path
-   * @param {Array} packageFolders The package folder names where the package and its dependencies
-   * are expected to be extracted to.
-   * Note that changing this does not extract the package to a different folder.
-   * However it is needed to check if the package folder already exists on the board in case of overwriting.
+   * @param {Array} packageFiles The package file paths that are expected to be extracted to the package folder.
+   * This is used to check if files would be overwritten when installing the package.
    * @param {boolean} overwriteExisting Whether to overwrite existing package folders on the board.
    * Defaults to true. Please note that single files are always overwritten as they
    * are not checked for existence.
    * @param {function} onProgress An optional callback function to track the upload progress.
    * The callback takes an integer argument representing the percentage of the upload progress.
    */
-  async installPackage(packageTarFilePath, packageFolders, overwriteExisting = true, onProgress = null) {
-    let targetFilePath;
+  async installPackage(packageTarFilePath, packageFiles, overwriteExisting = true, onProgress = null) {
+    let targetFilePath = path.basename(packageTarFilePath);
+    const packageFolders = this.getPackageFolders(packageFiles);
+    const filesInLibRoot = packageFiles.filter(file => file.split('/').length === 1);
+    let error;
 
     try {
+      if(filesInLibRoot.length > 0 && !overwriteExisting) {
+        throw new Error(`Installation would overwrite existing files in the root of the lib folder: ${filesInLibRoot.join(', ')}`);
+      }
+
       if (overwriteExisting && packageFolders) {
         for(const packageFolder of packageFolders) {
           if(!await this.packageFolderExists(packageFolder)) continue;
@@ -190,7 +216,6 @@ class PackageInstaller {
       }
       
       console.debug('📤 Uploading file to board');
-      targetFilePath = path.basename(packageTarFilePath);
       await this.uploadArchive(packageTarFilePath, targetFilePath, onProgress);
       await this.extractArchiveOnBoard(targetFilePath);
     } catch (error) {
@@ -206,7 +231,7 @@ class PackageInstaller {
    * @param {string} remoteFile The file path on the board to remove
    */
   async cleanUp(remoteFile) {
-    console.debug('🧹 Cleaning up archive file on board...');
+    console.debug(`🧹 Cleaning up archive file '${remoteFile}' on board...`);
     await this.board.fs_rm(remoteFile);
   }
 }
