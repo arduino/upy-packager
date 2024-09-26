@@ -75,6 +75,11 @@ class MPyCrossCompiler {
     async compileFile(filePath, boardArchitecture = null){                
         let flags = boardArchitecture ? `-march=${boardArchitecture}` : '';
 
+        // If the file is already an mpy file, just return the file path
+        if(filePath.endsWith('.mpy')){
+            return Promise.resolve(filePath);
+        }
+
         return new Promise((resolve, reject) => {
             exec(`${this.getCompilerBinaryPath()} ${filePath} ${flags}`, (error, stdout, stderr) => {
                 if (error) {
