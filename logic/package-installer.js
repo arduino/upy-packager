@@ -56,14 +56,15 @@ class PackageInstaller {
   }
 
   /**
-   * Determines if the given package folder exists on the board.
+   * Determines if the given package folder or file exists on the board.
    * Please note that the package name and the package folder name are not necessarily the same.
    * The package folder is the folder where the package is extracted to.
-   * @param {string} packageFolder The package folder name.
+   * @param {string} packagePath The package folder name or file path in case of single file packages.
+   * This is a relative path that gets appended to the library path.
    * @returns {Promise<boolean>} True if the package folder exists, false otherwise
    */
-  async packageFolderExists(packageFolder) {
-    return fileOrDirectoryExists(this.board, path.join(this.libraryPath, packageFolder));
+  async packageExists(packagePath) {
+    return fileOrDirectoryExists(this.board, path.join(this.libraryPath, packagePath));
   }
 
   /**
@@ -170,6 +171,7 @@ class PackageInstaller {
    * the common folder is 'modulino'.
    * @param {Array<string>} targetPaths The target paths of all files in the package.
    * @returns {Array<string>} The common folders of the target paths in the package.json file
+   * or an empty array if no common folders are found.
    */
   getPackageFolders(targetPaths) {
     const folders = targetPaths.map(entry => {
@@ -199,19 +201,28 @@ class PackageInstaller {
   async installPackage(packageTarFilePath, packageFiles, overwriteExisting = true, onProgress = null) {
     let targetFilePath = path.basename(packageTarFilePath);
     const packageFolders = this.getPackageFolders(packageFiles);
+    // Files in the library root are treated as single file packages
     const filesInLibRoot = packageFiles.filter(file => file.split('/').length === 1);
-    let error;
 
     try {
-      if(filesInLibRoot.length > 0 && !overwriteExisting) {
-        throw new Error(`Installation would overwrite existing files in the root of the lib folder: ${filesInLibRoot.join(', ')}`);
+      // There is no need to handle the case of deleting existing single files 
+      // as they are overwritten without raising an error
+      if(!overwriteExisting) {
+        for(const fileInLibRoot of filesInLibRoot) {
+          if(await this.packageExists(fileInLibRoot)) {
+            throw new Error(`Installation would overwrite existing file in the root of the lib folder: ${fileInLibRoot}`);
+          }
+        }
       }
 
-      if (overwriteExisting && packageFolders) {
-        for(const packageFolder of packageFolders) {
-          if(!await this.packageFolderExists(packageFolder)) continue;
-          console.debug(`🗑 Deleting existing package folder: ${packageFolder}`);
-          await this.deletePackageFolder(packageFolder);
+      for(const packageFolder of packageFolders) {
+        if(await this.packageExists(packageFolder)) {
+          if(overwriteExisting) {
+            console.debug(`🗑 Deleting existing package folder: ${packageFolder}`);
+            await this.deletePackageFolder(packageFolder);
+          } else {
+            throw new Error(`Installation would overwrite existing package folder: ${packageFolder}`);
+          }
         }
       }
       

@@ -180,7 +180,9 @@ class RepositoryArchiver {
    * @returns {string} Repository name
    */
   getRepoName() {
-    return this.repoUrl.split('/').slice(-1)[0].replace('.git', '');
+    // Remove trailing slashes e.g. in https://github.com/arduino/upy-packager/
+    const normalizedRepoUrl = this.repoUrl.replace(/\/$/, '');
+    return normalizedRepoUrl.split('/').slice(-1)[0].replace('.git', '');
   }
 
   /**
