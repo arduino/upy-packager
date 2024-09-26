@@ -47,7 +47,7 @@ class Packager {
      * It does so by first determining the architecture and mpy file format of the board
      * and then compiling the files if necessary.
      * @param {string} repositoryUrl The URL of the repository to package
-     * @param {string} version The version of the repository to package. Defaults to "HEAD".
+     * @param {string} version The version of the repository to package. Defaults to latest.
      * @param {Object} customPackageJson The custom package.json object.
      * This parameter is optional. If not provided, the package.json file from the repository will be used.
      * @param {boolean} closePort Whether to close the serial port after packaging the repository. Defaults to true.
@@ -56,9 +56,10 @@ class Packager {
      * and the path of the package folder.
      * @throws {Error} If the package cannot be created
      */
-    async package(repositoryUrl, version = "HEAD", customPackageJson = null, closePort = true) {        
+    async package(repositoryUrl, version = null, customPackageJson = null, closePort = true) {        
         let archiveResult;        
-        
+        version = version || "HEAD";
+
         try {            
             if(!this.board.serial?.isOpen) {
                 await this.board.open(this.serialPort);
@@ -80,17 +81,18 @@ class Packager {
     /**
      * Packages the repository and installs tha package on the board
      * @param {string} repositoryUrl The URL of the repository to package and install
-     * @param {string} version The version of the repository to install. Defaults to "HEAD".
+     * @param {string} version The version of the repository to install. Defaults to latest.
      * @param {Object} customPackageJson The custom package.json object.
      * This parameter is optional. If not provided, the package.json file from the repository will be used.
      * @param {boolean} overwriteExisting Whether to overwrite existing files on the board. Defaults to true.
      * When set to true, an existing package folder with the same name will be deleted before installing the new package.
      */
-    async packageAndInstall(repositoryUrl, version = "HEAD", customPackageJson = null, overwriteExisting = true) {
+    async packageAndInstall(repositoryUrl, version = null, customPackageJson = null, overwriteExisting = true) {
         if(!this.board.serial?.isOpen) {
             await this.board.open(this.serialPort);
         }
 
+        version = version || "HEAD";
         const archiveResult = await this.package(repositoryUrl, version, customPackageJson, false);
         const packageFiles = archiveResult.packageFiles;
         const tarFilePath = archiveResult.archivePath;

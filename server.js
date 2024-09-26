@@ -23,7 +23,7 @@ app.use(express.urlencoded({ extended: true }));
 // app.use('/downloads', express.static(path.resolve(__dirname, 'out')));
 
 // Helper function to handle the archive request
-async function handleArchiveRequest(res, repoUrl, architecture = null, format = null, customPackageJson = null) {
+async function handleArchiveRequest(res, repoUrl, version = null, architecture = null, format = null, customPackageJson = null) {
     try {
       const packager = new Packager();
   
@@ -32,7 +32,7 @@ async function handleArchiveRequest(res, repoUrl, architecture = null, format = 
       await fs.ensureDir(tempDir);
   
       // Archive the repository and get the filename
-      const tarGzFilePath = (await packager.packageForArchitectureAndFormat(repoUrl, architecture, format, customPackageJson)).archivePath;
+      const tarGzFilePath = (await packager.packageForArchitectureAndFormat(repoUrl, version, architecture, format, customPackageJson)).archivePath;
       const tarGzFileName = path.basename(tarGzFilePath);
 
       // Move the .tar.gz file from 'out' to temp directory for download
@@ -59,14 +59,14 @@ async function handleArchiveRequest(res, repoUrl, architecture = null, format = 
   
 // Handle POST requests for archiving repositories
 app.post('/archive', (req, res) => {
-    const { repoUrl, customPackageJson, format, architecture } = req.body;
+    const { repoUrl, version, customPackageJson, format, architecture } = req.body;
     const customPackageJsonObj = customPackageJson ? JSON.parse(customPackageJson) : null;
 
     if (!repoUrl) {
         return res.status(400).send('Repository URL is required');
     }
 
-    handleArchiveRequest(res, repoUrl, architecture, format, customPackageJsonObj)
+    handleArchiveRequest(res, repoUrl, version, architecture, format, customPackageJsonObj)
 });
 
 // Handle GET requests for archiving repositories
