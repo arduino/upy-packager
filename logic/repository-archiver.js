@@ -91,11 +91,17 @@ class RepositoryArchiver {
   /**
    * Fetches the package.json file from the given repository URL and branch
    * @param {string} repositoryUrl The URL of the repository in https:// or github: or gitlab: format.
+   * It can also be a direct link to the package.json file.
    * @param {string} branch The branch to use when fetching the package.json file.
    * @returns 
    */
   async fetchPackageJson(repositoryUrl, branch) {
-    const packageJsonUrl = this.getRawFileURL(`${repositoryUrl}/package.json`, branch);
+    let url = repositoryUrl;
+
+    if(!repositoryUrl.endsWith(".json")){
+      url = repositoryUrl.endsWith("/") ? `${repositoryUrl}package.json` : `${repositoryUrl}/package.json`;
+    }
+    const packageJsonUrl = this.getRawFileURL(url, branch);
 
     try {
       const response = await fetch(packageJsonUrl);
