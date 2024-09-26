@@ -281,6 +281,13 @@ class RepositoryArchiver {
     console.debug(`🌐 Downloading files from ${repoUrl} version ${version}...`);
     let packageJson;
 
+    if(repoUrl.endsWith(".py") || repoUrl.endsWith(".mpy")){
+      // Direct link to a file, will be downloaded to the root of the target directory
+      const fileInfo = [path.basename(repoUrl), repoUrl];
+      await this.downloadFile(fileInfo, targetDirectory, version, processFileCallback);
+      return { urls: [fileInfo] }; // Return a package.json-like object
+    }
+
     if (customPackageJson) {
       packageJson = customPackageJson;
     } else {
