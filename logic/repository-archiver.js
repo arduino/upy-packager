@@ -148,7 +148,11 @@ class RepositoryArchiver {
         // delete the original file.
         await fs.remove(filePath);
       }
+
+      return newFilePath;
     }
+
+    return filePath;
   }
 
   /**
@@ -180,7 +184,7 @@ class RepositoryArchiver {
   }
 
   /**
-   * Extracts the target files from the package.json data
+   * Extracts the target file paths from the package.json data
    * @param {Object} packageJsonData The package.json data object
    * @returns {Array<string>} The target files in the package.json data object
    * e.g. ['modulino/__init__.py', 'github:arduino/modulino/src/__init__.py'] -> modulino/__init__.py
@@ -284,8 +288,9 @@ class RepositoryArchiver {
     if(repoUrl.endsWith(".py") || repoUrl.endsWith(".mpy")){
       // Direct link to a file, will be downloaded to the root of the target directory
       const fileInfo = [path.basename(repoUrl), repoUrl];
-      await this.downloadFile(fileInfo, targetDirectory, version, processFileCallback);
-      return { urls: [fileInfo] }; // Return a package.json-like object
+      // Use the new file path in case the file is processed e.g. compiled and thus has a .mpy extension
+      const newFilePath = await this.downloadFile(fileInfo, targetDirectory, version, processFileCallback);
+      return { urls: [[path.basename(newFilePath), repoUrl]] }; // Return a package.json-like object
     }
 
     if (customPackageJson) {
@@ -295,7 +300,15 @@ class RepositoryArchiver {
       packageJson = await this.fetchPackageJson(repoUrl, version);
     }
     const downloadPromises = packageJson.urls.map(entry => this.downloadFile(entry, targetDirectory, version, processFileCallback));
-    await Promise.all(downloadPromises);
+    const downloadedFiles = await Promise.all(downloadPromises);
+    
+    // Adjust urls in the package.json object to reflect the potential new file paths
+    // The files might have been processed e.g. compiled and thus have a different file extension
+    packageJson.urls = downloadedFiles.map(filePath => {
+      const targetRelativePath = path.relative(targetDirectory, filePath);
+      return [targetRelativePath, this.getRawFileURL(filePath, version)];
+    });
+    
     return packageJson;
   }
 
