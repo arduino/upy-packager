@@ -24,7 +24,12 @@ app.use(express.urlencoded({ extended: true }));
 
 // Helper function to handle the archive request
 async function handleArchiveRequest(res, repoUrl, version = null, architecture = null, format = null, customPackageJson = null) {
-    try {
+  // Convert empty strings to null for version, architecture, and format
+  version = version || null;
+  architecture = architecture || null;
+  format = format || null;
+    
+  try {
       const packager = new Packager();
   
       // Create a temporary file path for the .tar.gz
@@ -101,6 +106,8 @@ app.get('/', (req, res) => {
       <input type="text" id="architecture" name="architecture" value="" ><br>
       <label for="format">Format:</label><br>
       <input type="text" id="format" name="format" value="" ><br>
+      <label for="version">Version:</label><br>
+      <input type="text" id="version" name="version" value="" ><br>
       <label for="customPackageJson">Custom package.json:</label><br>
       <textarea id="customPackageJson" name="customPackageJson" rows="4" cols="50" style="width: 800px;"></textarea><br><br>
       <input type="submit" value="Download">
