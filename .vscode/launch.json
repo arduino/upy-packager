@@ -33,11 +33,11 @@
         {
             "type": "node",
             "request": "launch",
-            "name": "Test Server",
+            "name": "Test Web Server",
             "skipFiles": [
                 "<node_internals>/**"
             ],
-            "program": "${workspaceFolder}/server.js",
+            "program": "${workspaceFolder}/test/web-server-test.js",
         },
         {
             "type": "node",
