@@ -1,4 +1,8 @@
 import { MPyCrossCompiler } from "../logic/mpy-cross-compiler.js";
+import MicroPythonBoard from 'micropython.js';
+
+const board = new MicroPythonBoard();
+await board.open("/dev/cu.usbmodem1234561");
 
 const compiler = new MPyCrossCompiler();
 const sourceFiles = [
