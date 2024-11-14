@@ -7,9 +7,10 @@ import { MPyCrossCompiler } from './mpy-cross-compiler.js';
 import { getArchitectureFromBoard, getMPyFileFormatFromBoard } from './board-helpers.js';
 
 class Packager {
-    constructor(serialPort) {
+    constructor(serialPort, compileFiles = true) {
         this.serialPort = serialPort;
         this.board = new MicroPythonBoard();
+        this.compileFiles = compileFiles;
     }
 
     /**
@@ -57,16 +58,24 @@ class Packager {
      * @throws {Error} If the package cannot be created
      */
     async package(repositoryUrl, version = null, customPackageJson = null, closePort = true) {        
-        let archiveResult;        
+        let archiveResult;
+        let architecture = null;
+        let mpyFormat = null;
         version = version || "HEAD";
 
         try {            
             if(!this.board.serial?.isOpen) {
                 await this.board.open(this.serialPort);
             }
-            console.debug(`🔧 Creating archive from ${repositoryUrl}...`);            
-            const architecture = await getArchitectureFromBoard(this.board);
-            const mpyFormat = await getMPyFileFormatFromBoard(this.board);
+            console.debug(`🔧 Creating archive from ${repositoryUrl}...`);
+
+            // If the files need to be compiled, get the architecture and mpy file format
+            // Not specifying those will result in the compilation being skipped.
+            if(this.compileFiles) {         
+                architecture = await getArchitectureFromBoard(this.board);
+                mpyFormat = await getMPyFileFormatFromBoard(this.board);
+            }
+
             archiveResult = await this.packageForArchitectureAndFormat(repositoryUrl, version, architecture, mpyFormat, customPackageJson);
             console.debug(`✅ Archive created: ${archiveResult.archivePath}`);
         } catch (error) {

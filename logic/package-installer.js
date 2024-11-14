@@ -7,6 +7,12 @@ import MicroPythonBoard from 'micropython.js';
 // Define __dirname for ES6 modules
 const __dirname = path.dirname(new URL(import.meta.url).pathname);
 
+/**
+ * Class to install packages on the MicroPython board.
+ * It uploads the package tar file, extracts it and verifies the hash of the extracted files.
+ * This class assumes that the board's port is already open.
+ * It takes care of deleting existing package folders and files if that option is enabled.
+ */
 class PackageInstaller {
   /**
    * Constructs a new PackageInstaller instance

@@ -9,6 +9,31 @@ import { Packager } from './packager.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+/**
+ * Class to handle the web server for the uPy Packager.
+ * The web server provides an API to archive repositories for MicroPython.
+ * It accepts POST and GET requests to archive repositories.
+ * 
+ * The GET request accepts the following query parameters:
+ * - repoUrl: The URL of the repository to archive (required)
+ * - version: The version of the repository to archive
+ * - architecture: The architecture of the MicroPython file
+ * - format: The format of the MicroPython file
+ * 
+ * The POST request accepts the following body parameters:
+ * - repoUrl: The URL of the repository to archive (required)
+ * - version: The version of the repository to archive
+ * - architecture: The architecture of the MicroPython file
+ * - format: The format of the MicroPython file
+ * - customPackageJson: A custom package.json object to override the package.json in the repository
+ * POST request can be encoded as application/x-www-form-urlencoded or application/json.
+ * 
+ * The archived repositories are served as .tar.gz files for download.
+ * The web server also serves a simple HTML form to submit repository URLs for archiving.
+ * The form allows specifying the version, architecture, and format of the MicroPython file.
+ * The form also allows specifying a custom package.json file to override the package.json in the repository.
+ * The web server is CORS-enabled to allow cross-origin requests.
+ */
 class PackagerWebServer {
   constructor(port = 3000) {
     this.app = express();
