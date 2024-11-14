@@ -1,6 +1,7 @@
 import { exec } from 'child_process';
 import { platform } from 'os';
 import path from 'path';
+import fs from 'fs';
 
 const __dirname = new URL('.', import.meta.url).pathname;
 
@@ -11,15 +12,23 @@ class MPyCrossCompiler {
 
     /**
      * Retrieves the path to the mpy-cross compiler binary
-     * @returns {string} The path to the mpy-cross compiler binary
+     * @returns {string} The path to the mpy-cross compiler binary or null if the binary does not exist
      */
     getCompilerBinaryPath(){
-        return path.join(__dirname, `../bin/${platform}/mpy-cross`);
+        let binaryPath = path.join(__dirname, `../bin/${platform}/mpy-cross`);
+        if(platform === 'win32'){
+            binaryPath += '.exe';
+        }
+        // Check if file exists
+        if(!fs.existsSync(binaryPath)){
+            return null;
+        }
     }
 
     /**
      * Retrieves the major version of the supporeted mpy file format from the mpy-cross compiler
      * @returns {Promise<number>} The major version of the mpy file format
+     * @throws {Error} If the compiler version cannot be determined
      */     
     async getMPyFileFormatFromCompiler(){
         // Extract the major version of mpy from the output. e.g. 6 from '... mpy-cross emitting mpy v6.3'
@@ -28,7 +37,7 @@ class MPyCrossCompiler {
             exec(`${this.getCompilerBinaryPath()} --version`, (error, stdout, stderr) => {
                 if (error) {
                     reject(error);
-                    return;
+                    return null;
                 }
                 const version = stdout.match(/mpy-cross emitting mpy v(\d+)/);
                 resolve(version ? parseInt(version[1]) : null);
@@ -44,8 +53,13 @@ class MPyCrossCompiler {
      * @throws {Error} If the compiler version cannot be determined
      */
     async supportsMpyFileFormat(mpyFileFormat){
-        const compilerFileFormat = await this.getMPyFileFormatFromCompiler();
-        return compilerFileFormat == mpyFileFormat
+        try {
+            const compilerFileFormat = await this.getMPyFileFormatFromCompiler();
+            return compilerFileFormat == mpyFileFormat
+        } catch (error) {
+            console.error(`Error determining compiler file format: ${error.message}`);
+            return false;
+        }
     }
 
     /**
@@ -80,8 +94,13 @@ class MPyCrossCompiler {
             return Promise.resolve(filePath);
         }
 
+        const compilerPath = this.getCompilerBinaryPath();
+        if(!compilerPath){
+            return Promise.reject(new Error('mpy-cross compiler not found'));
+        }
+
         return new Promise((resolve, reject) => {
-            exec(`${this.getCompilerBinaryPath()} ${filePath} ${flags}`, (error, stdout, stderr) => {
+            exec(`${compilerPath} ${filePath} ${flags}`, (error, stdout, stderr) => {
                 if (error) {
                     reject(error);
                     return;
