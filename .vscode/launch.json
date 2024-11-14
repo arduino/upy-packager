@@ -42,11 +42,11 @@
         {
             "type": "node",
             "request": "launch",
-            "name": "Test CRC",
+            "name": "Test Upload",
             "skipFiles": [
                 "<node_internals>/**"
             ],
-            "program": "${workspaceFolder}/test/crc-test.js",
+            "program": "${workspaceFolder}/test/upload-test.js",
         }
     ]
 }
