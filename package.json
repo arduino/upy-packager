@@ -7,7 +7,11 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
-  "author": "Sebastian Romero",
+  "author": {
+    "name": "Sebastian Romero",
+    "email": "s.romero@arduino.cc",
+    "url": "https://github.com/sebromero"
+  },
   "license": "ISC",
   "description": "",
   "dependencies": {
