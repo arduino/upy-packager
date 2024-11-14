@@ -37,7 +37,9 @@ class RepositoryArchiver {
   /**
    * 
    * @param {string} repoUrl The URL of the repository to archive in the format 'github:owner/repo' or 'gitlab:owner/repo'
-   * or https://github.com/owner/repo or https://gitlab.com/owner/repo
+   * or https://github.com/owner/repo or https://gitlab.com/owner/repo.
+   * It's also possible to indicate a specific package.json file or even single .py files.
+   * If the parameter is a simple string, it will be treated as the name of an official package.
    * @param {string} version The version to archive.
    * This is the release version provided by GitHub or GitLab not the version in the package.json file
    * although they should match.

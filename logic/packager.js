@@ -6,7 +6,25 @@ import { PackageInstaller } from './package-installer.js';
 import { MPyCrossCompiler } from './mpy-cross-compiler.js';
 import { getArchitectureFromBoard, getMPyFileFormatFromBoard } from './board-helpers.js';
 
+/**
+ * Class to package a repository for MicroPython and install it on a board
+ * The Packager class provides methods to package a repository into a .tar.gz archive
+ * and install the package on a MicroPython board.
+ * The package can be compiled for the specific architecture and mpy file format of the board.
+ * 
+ * The Packager class uses the MPyCrossCompiler class to compile the files if necessary.
+ * The Packager class uses the RepositoryArchiver class to create the package archive.
+ * The Packager class uses the PackageInstaller class to install the package on the board.
+ * The Packager class uses the MicroPythonBoard class to communicate with the board.
+ */
 class Packager {
+
+    /**
+     * Create a new Packager instance
+     * @param {string} serialPort The serial port to communicate with the board
+     * @param {boolean} compileFiles Whether to compile the files for the board. Defaults to true.
+     * If set to false, the files will be packaged as is without compilation.
+     */
     constructor(serialPort, compileFiles = true) {
         this.serialPort = serialPort;
         this.board = new MicroPythonBoard();
@@ -15,7 +33,11 @@ class Packager {
 
     /**
      * Packages the repository into a .tar.gz archive for the given architecture and mpy file format
-     * @param {string} repositoryUrl The URL of the repository to package
+     * @param {string} repositoryUrl The URL of the repository to package.
+     * Supported formats: 'github:owner/repo' or 'gitlab:owner/repo'
+     * or https://github.com/owner/repo or https://gitlab.com/owner/repo.
+     * It's also possible to indicate a specific package.json file or even single .py files.
+     * If the parameter is a simple string, it will be treated as the name of an official package.
      * @param {string} version The version of the repository to package.
      * @param {string} architecture The architecture of the board (e.g. 'xtensa')
      * @param {number} mpyFormat The major version of the mpy file format (e.g. 6)
@@ -47,7 +69,11 @@ class Packager {
      * Packages the repository into a .tar.gz archive
      * It does so by first determining the architecture and mpy file format of the board
      * and then compiling the files if necessary.
-     * @param {string} repositoryUrl The URL of the repository to package
+     * @param {string} repositoryUrl The URL of the repository to package.
+     * Supported formats: 'github:owner/repo' or 'gitlab:owner/repo'
+     * or https://github.com/owner/repo or https://gitlab.com/owner/repo.
+     * It's also possible to indicate a specific package.json file or even single .py files.
+     * If the parameter is a simple string, it will be treated as the name of an official package.
      * @param {string} version The version of the repository to package. Defaults to latest.
      * @param {Object} customPackageJson The custom package.json object.
      * This parameter is optional. If not provided, the package.json file from the repository will be used.
@@ -89,7 +115,11 @@ class Packager {
 
     /**
      * Packages the repository and installs tha package on the board
-     * @param {string} repositoryUrl The URL of the repository to package and install
+     * @param {string} repositoryUrl The URL of the repository to package and install.
+     * Supported formats: 'github:owner/repo' or 'gitlab:owner/repo'
+     * or https://github.com/owner/repo or https://gitlab.com/owner/repo.
+     * It's also possible to indicate a specific package.json file or even single .py files.
+     * If the parameter is a simple string, it will be treated as the name of an official package.
      * @param {string} version The version of the repository to install. Defaults to latest.
      * @param {Object} customPackageJson The custom package.json object.
      * This parameter is optional. If not provided, the package.json file from the repository will be used.
