@@ -5,7 +5,7 @@ This tool requires MicroPython to be installed beforehand. The serial port of th
 
 ## 💻 Usage
 
-### Package and Install
+### ⬆️ Package and Install
 The main use case is to package libraries and upload them to a connected board. To do so you can use the `Packager` class:
 
 ```js
@@ -73,7 +73,7 @@ packager.packageAndInstall(repositoryUrl, null, null, false)
 
 This might be useful to make sure installations of packages with the same name do not overwrite each other. The uniqueness of the library's folder cannot be guaranteed.
 
-### Package Libraries as a Web Service
+### 🌐 Package Libraries as a Web Service
 
 It's also possible to use the built-in web server to package libraries. This is useful for web tools that may want to install libraries but are subject to CORS. They can use this tool to create a web service that serves package files from arbitrary hosts:
 
@@ -85,28 +85,28 @@ webServer.start();
 The web server accepts GET and POST requests.
 
 The GET request accepts the following query parameters:
- - repoUrl: The URL of the repository to archive (required)
- - version: The version of the repository to archive
- - architecture: The architecture of the MicroPython file
- - format: The format of the MicroPython file
+ - `repoUrl`: The URL of the repository to archive (required)
+ - `version`: The version of the repository to archive
+ - `architecture`: The architecture of the MicroPython file
+ - `format`: The format of the MicroPython file
  
  The POST request accepts the following body parameters:
- - repoUrl: The URL of the repository to archive (required)
- - version: The version of the repository to archive (e.g. 1.0)
- - architecture: The architecture of the MicroPython file (e.g. xtensa)
- - format: The format of the MicroPython file (e.g. 6)
- - customPackageJson: A custom package.json object to override the package.json in the repository
+ - `repoUrl`: The URL of the repository to archive (required)
+ - `version`: The version of the repository to archive (e.g. 1.0)
+ - `architecture`: The architecture of the MicroPython file (e.g. xtensa)
+ - `format`: The format of the MicroPython file (e.g. 6)
+ - `customPackageJson`: A custom package.json object to override the package.json in the repository
  
- POST request can be encoded as application/x-www-form-urlencoded or application/json.
+ POST request can be encoded as `application/x-www-form-urlencoded` or `application/json`.
 
 ### Custom Use Cases
 
 For more custom use cases, the following classes are available in the package:
 
-- Packager: Download, package, upload and install libraries.
-- MPyCrossCompiler: Compile .py files for a specific architecture and runtime.
-- PackageInstaller: Upload and install libraries from .tar.gz archives.
-- RepositoryArchiver: Download and package libraries as .tar.gz archives.
+- `Packager`: Download, package, upload and install libraries.
+- `MPyCrossCompiler`: Compile .py files for a specific architecture and runtime.
+- `PackageInstaller`: Upload and install libraries from .tar.gz archives.
+- `RepositoryArchiver`: Download and package libraries as .tar.gz archives.
 
 ## 🧑‍💻 Development
 
