@@ -46,9 +46,10 @@ async function fileOrDirectoryExists(board, filePath) {
 }
 
 /**
- * 
- * @param {MicroPythonBoard} board 
- * @param {string} filePath 
+ * Executes a Python script file on the board by replacing template parameters
+ * in the script with the specified values.
+ * @param {MicroPythonBoard} board The MicroPython board instance to execute the script on
+ * @param {string} filePath The path to the Python script file on the host machine
  * @param {Object} templateParameters Template parameters to be replaced in the Python script
  * They are denoted by ${paramName} in the script. The key in the object should be paramName.
  * e.g. { 'localFileHash': 'acbd18db4cc2f85cedef654fccc4a4d8', 'targetFile': 'tmp.txt' }
