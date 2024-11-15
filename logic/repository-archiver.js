@@ -369,7 +369,7 @@ class RepositoryArchiver {
       await fs.remove(downloadedFilesDirectory);
       return new ArchiveResult(tarGzPath, allPackageFiles);
     } catch (error) {
-      console.error('Error:', error.message);
+      console.error('❌ Error:', error.message);
       throw error;
     }
   }

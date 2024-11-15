@@ -57,7 +57,12 @@ class Packager {
                 const fileName = path.basename(filePath);
                 console.debug(`✅ File downloaded: ${fileName}`);
                 console.debug(`🔧 Compiling ${fileName}...`);
-                return await compiler.compileFile(filePath, architecture);
+                try {
+                    return await compiler.compileFile(filePath, architecture);
+                } catch (error) {
+                    console.error(`❌ Compilation failed: ${error.message}`);
+                    return filePath;
+                }
             }
         }
 
