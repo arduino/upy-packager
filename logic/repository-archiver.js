@@ -4,6 +4,7 @@ import os from 'os';
 import path from 'path';
 import { pipeline } from 'stream';
 import { promisify } from 'util';
+import { isCustomPackage } from './url-helpers.js';
 
 const pipe = promisify(pipeline);
 const MICROPYTHON_LIB_INDEX = "https://micropython.org/pi/v2";
@@ -217,7 +218,7 @@ class RepositoryArchiver {
   async downloadFilesFromUrl(url, version, targetDirectory, customPackageJson = null, processFileCallback = null) {
     let packageJsonFiles = [];
     let packageJson  
-    if (this.isCustomPackage(url)) {
+    if (isCustomPackage(url)) {
       packageJson = await this.downloadFilesFromRepository(url, version, targetDirectory, customPackageJson, processFileCallback);
     } else {
       packageJson = await this.downloadFilesFromIndex(url, version, targetDirectory);
@@ -314,17 +315,6 @@ class RepositoryArchiver {
     });
     
     return packageJson;
-  }
-
-  /**
-   * Determines if the given dependency URL is a custom package meaning
-   * it doesn't refer to an official micropython-lib package.
-   * @param {string} url A repository URL in the format 'github:owner/repo' or 'gitlab:owner/repo'
-   * or 'http://example.com/folder' or 'https://github.com/owner/repo' or 'https://gitlab.com/owner/repo'
-   * @returns True if the dependency URL is a custom package, false otherwise.
-   */
-  isCustomPackage(url) {
-    return url.startsWith('github:') || url.startsWith('gitlab:') || url.startsWith('http://') || url.startsWith('https://');
   }
 
   /**
