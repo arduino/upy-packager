@@ -11,7 +11,9 @@ async function getArchitectureFromBoard(board) {
     await board.exit_raw_repl();
     // Arch is the third part of the string when split by '-'
     const parts = output.split('-');
-    return parts[2];
+    const architecture = parts[2];
+    // Filter out invalid "preview" architecture exposed by preview builds of MicroPython
+    return architecture === "preview" ? null : architecture;
 }
 
 /**
