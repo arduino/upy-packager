@@ -245,6 +245,7 @@ class RepositoryArchiver {
    * Subdirectories will be created for the package if specified in the package file.
    */
   async downloadFilesFromIndex(packageName, version, targetDirectory){
+    version = version === "HEAD" ? "latest" : version; // HEAD branch is treated as latest version
     version ||= 'latest'; // Default to latest version
     const mpyFormat = this.mpyFormat || 'py'; // Use plain .py format unless mpy format is specified
     console.debug(`🌐 Downloading package '${packageName}' ${version} from ${MICROPYTHON_LIB_INDEX}...`);
@@ -321,7 +322,7 @@ class RepositoryArchiver {
    * Archives the repository by downloading files from it and creating a tar.gz archive.   
    * @param {function} processFileCallback A callback function to process the downloaded file one by one.
    * The callback takes a file path as argument and should return a new file path.
-   * @param {string} targetDirectory The directory to save the archive to.
+   * @param {string} targetDirectory The (local) directory to save the archive to.
    * Defaults to a temporary directory.
    * @returns {ArchiveResult} The result of the archiving process containing the path to the created archive and the package folders.
    * @throws {Error} If an error occurs during the archiving process.
