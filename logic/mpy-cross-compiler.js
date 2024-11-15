@@ -92,6 +92,7 @@ class MPyCrossCompiler {
 
         // If the file is already an mpy file, just return the file path
         if(filePath.endsWith('.mpy')){
+            console.debug(`👍 File ${filePath} is already an mpy file. Skipping compilation.`);
             return Promise.resolve(filePath);
         }
 
