@@ -1,4 +1,5 @@
 import { extractREPLMessage } from './micropython-extensions.js';
+import MicroPythonBoard from 'micropython.js';
 
 /**
  * Retrieves the architecture of the board (e.g. 'xtensa')
@@ -28,4 +29,32 @@ async function getMPyFileFormatFromBoard(board){
     return parseInt(output);
 }
 
-export { getArchitectureFromBoard, getMPyFileFormatFromBoard };
+/**
+ * Gets the MicroPython version running on the board
+ * @param {MicroPythonBoard} board The MicroPython board instance
+ * @returns {Promise<string>} The MicroPython version. e.g. "1.21.0"
+ * Strips any trailing version tags such as "-preview" or "-dev"
+ */
+async function getMicroPythonVersionFromBoard(board) {
+    await board.enter_raw_repl()
+    const output = await board.exec_raw("import os; print(os.uname().release)")
+    await board.exit_raw_repl()
+    let version = extractREPLMessage(output);
+    return version.split("-")[0]; // Remove everyting after the first dash, if any
+}
+
+/**
+ * Gets the MicroPython version running on the board by connecting to the specified port
+ * @param {string} port The serial port to connect to
+ * @returns {Promise<string>} The MicroPython version. e.g. "1.21.0"
+ * Strips any trailing version tags such as "-preview" or "-dev"
+ */
+async function getMicroPythonVersionFromPort(port) {
+    const board = new MicroPythonBoard();
+    await board.open(port);
+    const version = await getMicroPythonVersionFromBoard(board);
+    await board.close();
+    return version;
+}
+
+export { getArchitectureFromBoard, getMPyFileFormatFromBoard, getMicroPythonVersionFromBoard, getMicroPythonVersionFromPort };

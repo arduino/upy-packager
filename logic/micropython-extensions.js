@@ -27,34 +27,6 @@ function extractREPLMessage(out, stripTrailingLinebreak = true) {
 }
 
 /**
- * Gets the MicroPython version running on the board
- * @param {MicroPythonBoard} board The MicroPython board instance
- * @returns {Promise<string>} The MicroPython version. e.g. "1.21.0"
- * Strips any trailing version tags such as "-preview" or "-dev"
- */
-async function getMicroPythonVersion(board) {
-  await board.enter_raw_repl()
-  const output = await board.exec_raw("import os; print(os.uname().release)")
-  await board.exit_raw_repl()
-  let version = extractREPLMessage(output);  
-  return version.split("-")[0]; // Remove everyting after the first dash, if any
-}
-
-/**
- * Gets the MicroPython version running on the board by connecting to the specified port
- * @param {string} port The serial port to connect to
- * @returns {Promise<string>} The MicroPython version. e.g. "1.21.0"
- * Strips any trailing version tags such as "-preview" or "-dev"
- */
-async function getMicroPythonVersionFromPort(port) {
-  const board = new MicroPythonBoard();
-  await board.open(port);
-  const version = await getMicroPythonVersion(board);
-  await board.close();
-  return version;
-}
-
-/**
  * Determines if a file or directory exists on the board
  * @param {MicroPythonBoard} board 
  * @param {string} filePath 
@@ -177,4 +149,4 @@ async function writeFile(board, src, dest, data_consumer, chunkSize = 512) {
   return Promise.reject(new Error(`Must specify source and destination paths`))
 }
 
-export { extractREPLMessage, executePythonFile, fileOrDirectoryExists, writeFile, getMicroPythonVersion, getMicroPythonVersionFromPort };
+export { extractREPLMessage, executePythonFile, fileOrDirectoryExists, writeFile };
