@@ -23,6 +23,7 @@ class MPyCrossCompiler {
         if(!fs.existsSync(binaryPath)){
             return null;
         }
+        return binaryPath;
     }
 
     /**
