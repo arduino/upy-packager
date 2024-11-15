@@ -52,7 +52,8 @@ class Packager {
         const compiler = new MPyCrossCompiler();
         let downloadedFileCallback = null;
 
-        if (architecture && mpyFormat && await compiler.supportsMpyFileFormat(mpyFormat)) {
+        // No need to check 'architecture' for null as the compilation works without it
+        if (mpyFormat && await compiler.supportsMpyFileFormat(mpyFormat)) {
             downloadedFileCallback = async (filePath) => {
                 const fileName = path.basename(filePath);
                 console.debug(`✅ File downloaded: ${fileName}`);
