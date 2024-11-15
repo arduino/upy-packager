@@ -109,7 +109,7 @@ class RepositoryArchiver {
     try {
       const response = await fetch(packageJsonUrl);
       if (!response.ok) {
-        throw new Error(`Failed to fetch package.json: ${response.statusText}`);
+        throw new Error(`${response.statusText}`);
       }
       return await response.json();
     } catch (error) {
