@@ -138,20 +138,23 @@ class Packager {
         }
 
         version = version || "HEAD";
-        const archiveResult = await this.package(repositoryUrl, version, customPackageJson, false);
-        const packageFiles = archiveResult.packageFiles;
-        const tarFilePath = archiveResult.archivePath;
-        const packageInstaller = new PackageInstaller(this.board);
+        let tarFilePath;
         
         try {
+            const archiveResult = await this.package(repositoryUrl, version, customPackageJson, false);
+            const packageFiles = archiveResult.packageFiles;
+            tarFilePath = archiveResult.archivePath;
+            const packageInstaller = new PackageInstaller(this.board);
             await packageInstaller.installPackage(tarFilePath, packageFiles, overwriteExisting, (progress) => {
                 console.debug(`Progress: ${progress}%`);
             });
         } catch (error) {
             throw error;
         } finally {
-            console.debug('🧹 Cleaning up local archive file...');
-            fs.removeSync(tarFilePath);
+            if(tarFilePath) {
+                console.debug('🧹 Cleaning up local archive file...');
+                fs.removeSync(tarFilePath);
+            }
             await this.board.close();
         }
     }
