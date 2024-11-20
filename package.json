@@ -12,6 +12,12 @@
     "email": "s.romero@arduino.cc",
     "url": "https://github.com/sebromero"
   },
+  "maintainers": [
+    {
+      "name": "Arduino",
+      "email": "info@arduino.cc"
+    }
+  ],
   "license": "ISC",
   "description": "",
   "dependencies": {
