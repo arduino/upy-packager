@@ -144,8 +144,9 @@ class RepositoryArchiver {
     const writer = fs.createWriteStream(filePath);
     await pipe(response.body, writer);
 
-    if (processFileCallback) {
-      const newFilePath = await processFileCallback(filePath);
+    if (processFileCallback) {  
+      const basePath = filePath.replace(targetRelativePath, '');      
+      const newFilePath = await processFileCallback(filePath, basePath);
       if (newFilePath && filePath !== newFilePath) {
         // If the processed file has a different path
         // delete the original file.

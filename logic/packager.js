@@ -54,12 +54,12 @@ class Packager {
 
         // No need to check 'architecture' for null as the compilation works without it
         if (mpyFormat && await compiler.supportsMpyFileFormat(mpyFormat)) {
-            downloadedFileCallback = async (filePath) => {
+            downloadedFileCallback = async (filePath, basePath) => {
                 const fileName = path.basename(filePath);
                 console.debug(`✅ File downloaded: ${fileName}`);
                 console.debug(`🔧 Compiling ${fileName}...`);
                 try {
-                    return await compiler.compileFile(filePath, architecture);
+                    return await compiler.compileFile(filePath, basePath, architecture);
                 } catch (error) {
                     console.error(`❌ Compilation failed: ${error.message}`);
                     return filePath;

@@ -9,6 +9,6 @@ const sourceFiles = [
     '~/Downloads/radio_control/__init__.py',
     '~/Downloads/radio_control/transmitter.py'
 ]
-const basePath = '/Users/sebastian/Desktop';
-await compiler.compileFiles(["/Users/sebastian/Desktop/breaker.py"], basePath);
+const basePath = '~/Downloads/';
+await compiler.compileFiles(sourceFiles, basePath);
 await board.close();
