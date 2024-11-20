@@ -27,6 +27,35 @@ function extractREPLMessage(out, stripTrailingLinebreak = true) {
 }
 
 /**
+ * Enters the RAW REPL mode on the board and waits for the specified time
+ * until it times out. If the timeout is exceeded, the RAW REPL is exited
+ * and an error is thrown.
+ * This is useful e.g. when using tty devices that may allow to open an already
+ * opened connection but stall when trying to enter the RAW REPL.
+ * @param {MicroPythonBoard} board The MicroPython board instance
+ * @param {number} timeout The timeout in milliseconds to wait for the RAW REPL
+ * @returns {Promise<void>} A promise that resolves when the RAW REPL is entered
+ * or rejects if the timeout is exceeded
+ * @throws {Error} If the timeout is exceeded
+ */
+async function enterRawREPLWithTimeout(board, timeout = 3000) {
+  return new Promise(async (resolve, reject) => {
+    const timeoutId = setTimeout(() => {
+      board.exit_raw_repl()
+      reject(new Error('Timeout waiting for REPL'))
+    }, timeout)
+    try {
+      await board.enter_raw_repl()
+      clearTimeout(timeoutId)
+      resolve()
+    } catch (error) {
+      clearTimeout(timeoutId)
+      reject(error)
+    }
+  })
+}
+
+/**
  * Determines if a file or directory exists on the board
  * @param {MicroPythonBoard} board 
  * @param {string} filePath 
@@ -39,10 +68,10 @@ async function fileOrDirectoryExists(board, filePath) {
       command += `    print(1)\n`;
       command += `except OSError:\n`;
       command += `    print(0)\n`;
-  await board.enter_raw_repl()
-  const output = await board.exec_raw(command)
-  await board.exit_raw_repl()
-  return output[2] == '1'
+  await enterRawREPLWithTimeout(board);
+  const output = await board.exec_raw(command);
+  await board.exit_raw_repl();
+  return output[2] == '1';
 }
 
 /**
@@ -60,7 +89,7 @@ async function executePythonFile(board, filePath, templateParameters) {
       // Replace all occurrences of the template parameter
       script = script.replace(new RegExp('\\${\s*' + key + '\s*}', 'g'), value);
     }
-    await board.enter_raw_repl()
+    await enterRawREPLWithTimeout(board);
     const output = await board.exec_raw(script);
     await board.exit_raw_repl()
     return output;
@@ -104,7 +133,7 @@ async function writeFile(board, src, dest, data_consumer, chunkSize = 512) {
       return Promise.reject(new Error(`Error executing Python script: ${output}`))
     }
 
-    completeOutput += await board.enter_raw_repl()
+    completeOutput += await enterRawREPLWithTimeout(board);
     completeOutput += await board.exec_raw(`f=open('${dest}','wb')\nw=f.write`)    
     let i = 0, currentProgress = 0
     
@@ -149,4 +178,4 @@ async function writeFile(board, src, dest, data_consumer, chunkSize = 512) {
   return Promise.reject(new Error(`Must specify source and destination paths`))
 }
 
-export { extractREPLMessage, executePythonFile, fileOrDirectoryExists, writeFile };
+export { extractREPLMessage, executePythonFile, fileOrDirectoryExists, writeFile, enterRawREPLWithTimeout };

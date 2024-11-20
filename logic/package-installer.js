@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import path from 'path';
 import fs from 'fs';
-import { extractREPLMessage, fileOrDirectoryExists, writeFile } from './micropython-extensions.js';
+import { extractREPLMessage, fileOrDirectoryExists, writeFile, enterRawREPLWithTimeout } from './micropython-extensions.js';
 import MicroPythonBoard from 'micropython.js';
 
 // Define __dirname for ES6 modules
@@ -55,7 +55,7 @@ class PackageInstaller {
     if (output !== '') {
       throw new Error('Failed to load validate_hash.py. Output: ' + output);
     }
-    await this.board.enter_raw_repl()
+    await enterRawREPLWithTimeout(this.board);
     output = extractREPLMessage(await this.board.exec_raw(`validate_hash('${targetFile}', b'${localFileHash}')`));
     await this.board.exit_raw_repl()
     return output === '1';
@@ -81,7 +81,7 @@ class PackageInstaller {
    */
   async deletePackageFolder(packageFolder) {
     await this.board.execfile(path.join(__dirname, "python", 'remove_directory.py'));
-    await this.board.enter_raw_repl()
+    await enterRawREPLWithTimeout(this.board);
     const targetDirectory = path.join(this.libraryPath, packageFolder);
     const output = extractREPLMessage(await this.board.exec_raw(`remove_directory_recursive('${targetDirectory}')`));
     await this.board.exit_raw_repl()
@@ -133,7 +133,7 @@ class PackageInstaller {
 
     console.debug('📦 Extracting archive...')
     let output;
-    await this.board.enter_raw_repl()
+    await enterRawREPLWithTimeout(this.board);
     output = extractREPLMessage(await this.board.exec_raw('from tarfile import TarFile, DIRTYPE'))
     await this.board.exit_raw_repl()
 
@@ -150,7 +150,7 @@ class PackageInstaller {
       throw new Error('Failed to import extract_archive.py. Output: ' + output);
     }
 
-    await this.board.enter_raw_repl()
+    await enterRawREPLWithTimeout(this.board);
     const command = `untar('${archiveFilePath}', '${this.libraryPath}')`;
     output = extractREPLMessage(await this.board.exec_raw(command))
     await this.board.exit_raw_repl()

@@ -1,4 +1,4 @@
-import { extractREPLMessage } from './micropython-extensions.js';
+import { extractREPLMessage, enterRawREPLWithTimeout } from './micropython-extensions.js';
 import MicroPythonBoard from 'micropython.js';
 
 /**
@@ -7,7 +7,7 @@ import MicroPythonBoard from 'micropython.js';
  * @returns {Promise<string>} The architecture of the board
  */
 async function getArchitectureFromBoard(board) {
-    await board.enter_raw_repl();
+    await enterRawREPLWithTimeout(board);
     const output = extractREPLMessage(await board.exec_raw("import platform; print(platform.platform())"));
     await board.exit_raw_repl();
     // Arch is the third part of the string when split by '-'
@@ -36,7 +36,7 @@ async function getMPyFileFormatFromBoard(board){
  * Strips any trailing version tags such as "-preview" or "-dev"
  */
 async function getMicroPythonVersionFromBoard(board) {
-    await board.enter_raw_repl()
+    await enterRawREPLWithTimeout(board);
     const output = await board.exec_raw("import os; print(os.uname().release)")
     await board.exit_raw_repl()
     let version = extractREPLMessage(output);
