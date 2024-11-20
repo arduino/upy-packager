@@ -66,14 +66,17 @@ class MPyCrossCompiler {
     /**
      * Compiles the given files using the mpy-cross compiler
      * @param {string[]} filePaths The paths to the files to compile
+     * @param {string} basePath The base path to use for compilation.
+     * This is useful since the file path will be hardcoded in the compiled file.
+     * When an excpetion is thrown in the compiled file, the hardcoded file path will be shown.
      * @param {string} boardArchitecture The architecture of the board (e.g. 'xtensa').
      * If omitted, the architecture will not be specified for compilation.
      * @returns {Promise<void[]>} A promise that resolves when all files have been compiled
      */
-    async compileFiles(filePaths, boardArchitecture = null){
+    async compileFiles(filePaths, basePath = null, boardArchitecture = null){
         let promises = [];
         for(const filePath of filePaths){
-            promises.push(this.compileFile(filePath, boardArchitecture));
+            promises.push(this.compileFile(filePath, basePath, boardArchitecture));
         }
         return Promise.all(promises);
     }        
@@ -81,13 +84,16 @@ class MPyCrossCompiler {
     /**
      * Compiles the given file using the mpy-cross compiler
      * @param {string} filePath The path to the file to compile
+     * @param {string} basePath The base path to use for compilation.
+     * This is useful since the file path will be hardcoded in the compiled file.
+     * When an excpetion is thrown in the compiled file, the hardcoded file path will be shown.
      * @param {string} boardArchitecture The architecture of the board (e.g. 'xtensa').
      * If omitted, the architecture will not be specified for compilation.
      * @returns {Promise<string>} A promise that resolves with the path to the compiled file.
      * The compiled file will have the same name as the input file but with the .mpy extension.
      * @throws {Error} If the compilation fails
      */
-    async compileFile(filePath, boardArchitecture = null){                
+    async compileFile(filePath, basePath = null, boardArchitecture = null){                
         let flags = boardArchitecture ? `-march=${boardArchitecture}` : '';
 
         // If the file is already an mpy file, just return the file path
@@ -101,8 +107,10 @@ class MPyCrossCompiler {
             return Promise.reject(new Error('mpy-cross compiler not found'));
         }
 
+        const relativeFilePath = basePath ? path.relative(basePath, filePath) : filePath;
+
         return new Promise((resolve, reject) => {
-            exec(`${compilerPath} ${filePath} ${flags}`, (error, stdout, stderr) => {
+            exec(`${compilerPath} ${relativeFilePath} ${flags}`, {cwd: basePath}, (error, stdout, stderr) => {
                 if (error) {
                     reject(error);
                     return;
