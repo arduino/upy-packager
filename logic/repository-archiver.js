@@ -107,7 +107,7 @@ class RepositoryArchiver {
     const packageJsonUrl = this.getRawFileURL(url, branch);
 
     try {
-      const response = await fetch(packageJsonUrl);
+      const response = await fetch(packageJsonUrl, { signal: AbortSignal.timeout(5000) });
       if (!response.ok) {
         throw new Error(`${response.statusText}`);
       }
