@@ -18,7 +18,7 @@
                 // "https://github.com/arduino/arduino-iot-cloud-py/package.json",
                 // "https://github.com/arduino/arduino-iot-cloud-py/src/arduino_iot_cloud/ucloud.py",
                 // "ssd1306",
-                "/dev/cu.usbmodem1234561"
+                "/dev/cu.usbmodem1101"
             ]
         },
         {

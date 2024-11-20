@@ -2,7 +2,7 @@ import { Packager } from "../logic/packager.js";
 
 const TEST_DATA = {
   "repository": "https://github.com/arduino/arduino-modulino-mpy",
-  "port": "/dev/cu.usbmodem1234561",
+  "port": "/dev/cu.usbmodem1101",
   "customPackageJson": {
     "urls": [
       ["modulino/__init__.py", "github:arduino/modulino-mpy/src/modulino/__init__.py"],
