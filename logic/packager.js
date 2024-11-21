@@ -24,11 +24,14 @@ class Packager {
      * @param {string} serialPort The serial port to communicate with the board
      * @param {boolean} compileFiles Whether to compile the files for the board. Defaults to true.
      * If set to false, the files will be packaged as is without compilation.
+     * @param {boolean} overwriteExisting Whether to overwrite existing files on the board. Defaults to true.
+     * When set to true, an existing package folder with the same name will be deleted before installing the new package.
      */
-    constructor(serialPort, compileFiles = true) {
+    constructor(serialPort, compileFiles = true, overwriteExisting = true) {
         this.serialPort = serialPort;
         this.board = new MicroPythonBoard();
         this.compileFiles = compileFiles;
+        this.overwriteExisting = overwriteExisting;
     }
 
     /**
@@ -129,10 +132,8 @@ class Packager {
      * @param {string} version The version of the repository to install. Defaults to latest.
      * @param {Object} customPackageJson The custom package.json object.
      * This parameter is optional. If not provided, the package.json file from the repository will be used.
-     * @param {boolean} overwriteExisting Whether to overwrite existing files on the board. Defaults to true.
-     * When set to true, an existing package folder with the same name will be deleted before installing the new package.
      */
-    async packageAndInstall(repositoryUrl, version = null, customPackageJson = null, overwriteExisting = true) {
+    async packageAndInstall(repositoryUrl, version = null, customPackageJson = null) {
         if(!this.board.serial?.isOpen) {
             await this.board.open(this.serialPort);
         }
@@ -145,7 +146,7 @@ class Packager {
             const packageFiles = archiveResult.packageFiles;
             tarFilePath = archiveResult.archivePath;
             const packageInstaller = new PackageInstaller(this.board);
-            await packageInstaller.installPackage(tarFilePath, packageFiles, overwriteExisting, (progress) => {
+            await packageInstaller.installPackage(tarFilePath, packageFiles, this.overwriteExisting, (progress) => {
                 console.debug(`Progress: ${progress}%`);
             });
         } catch (error) {
