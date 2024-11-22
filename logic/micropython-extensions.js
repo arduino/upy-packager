@@ -4,7 +4,9 @@ import MicroPythonBoard from 'micropython.js';
 import CRC32 from 'crc-32';
 
 // Define __dirname for ES6 modules
-const __dirname = path.dirname(new URL(import.meta.url).pathname);
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 /**
  * Extracts the message from the output of the REPL by removing the prefix and suffix

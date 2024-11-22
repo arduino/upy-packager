@@ -5,7 +5,9 @@ import { extractREPLMessage, fileOrDirectoryExists, writeFile, enterRawREPLWithT
 import MicroPythonBoard from 'micropython.js';
 
 // Define __dirname for ES6 modules
-const __dirname = path.dirname(new URL(import.meta.url).pathname);
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 /**
  * Class to install packages on the MicroPython board.
