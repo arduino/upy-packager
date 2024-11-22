@@ -312,7 +312,11 @@ class RepositoryArchiver {
     // Adjust urls in the package.json object to reflect the potential new file paths
     // The files might have been processed e.g. compiled and thus have a different file extension
     packageJson.urls = downloadedFiles.map(filePath => {
-      const targetRelativePath = path.relative(targetDirectory, filePath);
+      let targetRelativePath = path.relative(targetDirectory, filePath);
+      // Replace backslashes with forward slashes for Windows compatibility
+      // The target path will be used on the board when extracting the archive
+      // to check for existing files and directories.
+      targetRelativePath = targetRelativePath.replace(/\\/g, '/');
       return [targetRelativePath, this.getRawFileURL(filePath, version)];
     });
     

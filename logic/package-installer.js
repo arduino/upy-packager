@@ -72,7 +72,7 @@ class PackageInstaller {
    * @returns {Promise<boolean>} True if the package folder exists, false otherwise
    */
   async packageExists(packagePath) {
-    return fileOrDirectoryExists(this.board, path.join(this.libraryPath, packagePath));
+    return fileOrDirectoryExists(this.board, path.posix.join(this.libraryPath, packagePath));
   }
 
   /**
@@ -84,7 +84,7 @@ class PackageInstaller {
   async deletePackageFolder(packageFolder) {
     await this.board.execfile(path.join(__dirname, "python", 'remove_directory.py'));
     await enterRawREPLWithTimeout(this.board);
-    const targetDirectory = path.join(this.libraryPath, packageFolder);
+    const targetDirectory = path.posix.join(this.libraryPath, packageFolder);
     const output = extractREPLMessage(await this.board.exec_raw(`remove_directory_recursive('${targetDirectory}')`));
     await this.board.exit_raw_repl()
 
