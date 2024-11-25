@@ -1,5 +1,6 @@
-import { extractREPLMessage, enterRawREPLWithTimeout } from './micropython-extensions.js';
+import { extractREPLMessage } from './micropython-extensions.js';
 import MicroPythonBoard from 'micropython.js';
+import { getPromptWithTimeout } from './micropython-extensions.js';
 
 /**
  * Retrieves the architecture of the board (e.g. 'xtensa')
@@ -7,7 +8,8 @@ import MicroPythonBoard from 'micropython.js';
  * @returns {Promise<string>} The architecture of the board
  */
 async function getArchitectureFromBoard(board) {
-    await enterRawREPLWithTimeout(board);
+    await getPromptWithTimeout(board);
+    await board.enter_raw_repl();
     const output = extractREPLMessage(await board.exec_raw("import platform; print(platform.platform())"));
     await board.exit_raw_repl();
     // Arch is the third part of the string when split by '-'
@@ -23,6 +25,7 @@ async function getArchitectureFromBoard(board) {
  * @returns {Promise<number>} The major version of the mpy file format
  */
 async function getMPyFileFormatFromBoard(board){
+    await getPromptWithTimeout(board);
     await board.enter_raw_repl(board);
     const output = extractREPLMessage(await board.exec_raw("import sys; print(getattr(sys.implementation, '_mpy', 0) & 0xFF)"));
     await board.exit_raw_repl();
@@ -36,7 +39,8 @@ async function getMPyFileFormatFromBoard(board){
  * Strips any trailing version tags such as "-preview" or "-dev"
  */
 async function getMicroPythonVersionFromBoard(board) {
-    await enterRawREPLWithTimeout(board);
+    await getPromptWithTimeout(board);
+    await board.enter_raw_repl();
     const output = await board.exec_raw("import os; print(os.uname().release)")
     await board.exit_raw_repl()
     let version = extractREPLMessage(output);

@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import path from 'path';
 import fs from 'fs';
-import { extractREPLMessage, fileOrDirectoryExists, writeFile, enterRawREPLWithTimeout } from './micropython-extensions.js';
+import { extractREPLMessage, fileOrDirectoryExists, writeFile, getPromptWithTimeout } from './micropython-extensions.js';
 import MicroPythonBoard from 'micropython.js';
 
 // Define __dirname for ES6 modules
@@ -52,12 +52,13 @@ class PackageInstaller {
   async verifyHash(filePath, targetFile) {
     const localFileHash = await this.calculateHash(filePath);
     const scriptPath = path.join(__dirname, "python", 'validate_hash.py');
-
+    
+    await getPromptWithTimeout(this.board);
     let output = extractREPLMessage(await this.board.execfile(scriptPath));
     if (output !== '') {
       throw new Error('Failed to load validate_hash.py. Output: ' + output);
     }
-    await enterRawREPLWithTimeout(this.board);
+    await this.board.enter_raw_repl();
     output = extractREPLMessage(await this.board.exec_raw(`validate_hash('${targetFile}', b'${localFileHash}')`));
     await this.board.exit_raw_repl()
     return output === '1';
@@ -82,8 +83,9 @@ class PackageInstaller {
    * @param {string} packageFolder The package folder name.
    */
   async deletePackageFolder(packageFolder) {
+    await getPromptWithTimeout(this.board);
     await this.board.execfile(path.join(__dirname, "python", 'remove_directory.py'));
-    await enterRawREPLWithTimeout(this.board);
+    await this.board.enter_raw_repl();
     const targetDirectory = path.posix.join(this.libraryPath, packageFolder);
     const output = extractREPLMessage(await this.board.exec_raw(`remove_directory_recursive('${targetDirectory}')`));
     await this.board.exit_raw_repl()
@@ -135,7 +137,8 @@ class PackageInstaller {
 
     console.debug('📦 Extracting archive...')
     let output;
-    await enterRawREPLWithTimeout(this.board);
+    await getPromptWithTimeout(this.board);
+    await this.board.enter_raw_repl();
     output = extractREPLMessage(await this.board.exec_raw('from tarfile import TarFile, DIRTYPE'))
     await this.board.exit_raw_repl()
 
@@ -152,7 +155,7 @@ class PackageInstaller {
       throw new Error('Failed to import extract_archive.py. Output: ' + output);
     }
 
-    await enterRawREPLWithTimeout(this.board);
+    await this.board.enter_raw_repl();
     const command = `untar('${archiveFilePath}', '${this.libraryPath}')`;
     output = extractREPLMessage(await this.board.exec_raw(command))
     await this.board.exit_raw_repl()
@@ -168,7 +171,7 @@ class PackageInstaller {
     }
 
     if (!output.includes('Extraction complete')) {
-      throw new Error('Failed to extract archive' + output);
+      throw new Error('Failed to extract archive: ' + output);
     }
   }
 

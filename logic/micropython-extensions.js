@@ -2,11 +2,24 @@ import fs from 'fs';
 import path from 'path';
 import MicroPythonBoard from 'micropython.js';
 import CRC32 from 'crc-32';
+import pTimeout from 'p-timeout';
 
 // Define __dirname for ES6 modules
 import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+/**
+ * Waits for the prompt to appear on the board with a timeout
+ * @param {MicroPythonBoard} board The MicroPython board instance
+ * @param {number} timeout The timeout in milliseconds. Defaults to 3000ms
+ * @returns {Promise<void>} A promise that resolves when the prompt appears
+ * @throws {TimeoutError} If the prompt does not appear within the timeout.
+ */ 
+async function getPromptWithTimeout(board, timeout = 3000) {
+    await pTimeout(board.get_prompt(), { milliseconds: timeout, message: "Timeout waiting for REPL"});
+}
+
 
 /**
  * Extracts the message from the output of the REPL by removing the prefix and suffix
@@ -29,35 +42,6 @@ function extractREPLMessage(out, stripTrailingLinebreak = true) {
 }
 
 /**
- * Enters the RAW REPL mode on the board and waits for the specified time
- * until it times out. If the timeout is exceeded, the RAW REPL is exited
- * and an error is thrown.
- * This is useful e.g. when using tty devices that may allow to open an already
- * opened connection but stall when trying to enter the RAW REPL.
- * @param {MicroPythonBoard} board The MicroPython board instance
- * @param {number} timeout The timeout in milliseconds to wait for the RAW REPL
- * @returns {Promise<void>} A promise that resolves when the RAW REPL is entered
- * or rejects if the timeout is exceeded
- * @throws {Error} If the timeout is exceeded
- */
-async function enterRawREPLWithTimeout(board, timeout = 3000) {
-  return new Promise(async (resolve, reject) => {
-    const timeoutId = setTimeout(() => {
-      board.exit_raw_repl()
-      reject(new Error('Timeout waiting for REPL'))
-    }, timeout)
-    try {
-      await board.enter_raw_repl()
-      clearTimeout(timeoutId)
-      resolve()
-    } catch (error) {
-      clearTimeout(timeoutId)
-      reject(error)
-    }
-  })
-}
-
-/**
  * Determines if a file or directory exists on the board
  * @param {MicroPythonBoard} board 
  * @param {string} filePath 
@@ -70,7 +54,8 @@ async function fileOrDirectoryExists(board, filePath) {
       command += `    print(1)\n`;
       command += `except OSError:\n`;
       command += `    print(0)\n`;
-  await enterRawREPLWithTimeout(board);
+  await getPromptWithTimeout(board);
+  await board.enter_raw_repl();
   const output = await board.exec_raw(command);
   await board.exit_raw_repl();
   return output[2] == '1';
@@ -91,7 +76,8 @@ async function executePythonFile(board, filePath, templateParameters) {
       // Replace all occurrences of the template parameter
       script = script.replace(new RegExp('\\${\s*' + key + '\s*}', 'g'), value);
     }
-    await enterRawREPLWithTimeout(board);
+    await getPromptWithTimeout(board);
+    await board.enter_raw_repl();
     const output = await board.exec_raw(script);
     await board.exit_raw_repl()
     return output;
@@ -123,24 +109,25 @@ function getCRC32(data){
  * @returns {Promise<string>} The output of the write operation
  */
 async function writeFile(board, src, dest, data_consumer, chunkSize = 512) {
+  await getPromptWithTimeout(board);
   data_consumer = data_consumer || function () { }
   if (src && dest) {
-    const fileContent = fs.readFileSync(path.resolve(src), 'binary')
-    const contentBuffer = Buffer.from(fileContent, 'binary')
+    const fileContent = fs.readFileSync(path.resolve(src), 'binary');
+    const contentBuffer = Buffer.from(fileContent, 'binary');
     const scriptPath = path.join(__dirname, "python", 'crc.py');
     let output = await board.execfile(scriptPath);
     let completeOutput = ''
 
     if (output.slice(2, -3) != '') {
-      return Promise.reject(new Error(`Error executing Python script: ${output}`))
+      return Promise.reject(new Error(`Error executing Python script: ${output}`));
     }
 
-    completeOutput += await enterRawREPLWithTimeout(board);
-    completeOutput += await board.exec_raw(`f=open('${dest}','wb')\nw=f.write`)    
-    let i = 0, currentProgress = 0
+    completeOutput += await board.enter_raw_repl();
+    completeOutput += await board.exec_raw(`f=open('${dest}','wb')\nw=f.write`);
+    let i = 0, currentProgress = 0;
     
     while(i < contentBuffer.length) {
-      let slice = Uint8Array.from(contentBuffer.subarray(i, i + chunkSize))
+      let slice = Uint8Array.from(contentBuffer.subarray(i, i + chunkSize));
       const crcData = getCRC32(slice);
       const mergedData = new Uint8Array(slice.length + crcData.length);
       mergedData.set(slice);
@@ -180,4 +167,25 @@ async function writeFile(board, src, dest, data_consumer, chunkSize = 512) {
   return Promise.reject(new Error(`Must specify source and destination paths`))
 }
 
-export { extractREPLMessage, executePythonFile, fileOrDirectoryExists, writeFile, enterRawREPLWithTimeout };
+/**
+ * Ensures that a directory exists on the board
+ * @param {MicroPythonBoard} board The MicroPython board instance
+ * @param {string} dirPath The directory path to ensure exists
+ * @returns {Promise<string>} The output of the command
+ */
+async function ensureDirectoryExists(board, dirPath) {
+  await getPromptWithTimeout(board);
+  await board.enter_raw_repl();
+  let command =  `import os\n`;
+      command += `try:\n`;
+      command += `    os.stat("${dirPath}")\n`;
+      command += `    print(1)\n`;
+      command += `except OSError:\n`;
+      command += `    os.mkdir("${dirPath}")\n`;
+      command += `    print(0)\n`;
+  const output = await board.exec_raw(command);
+  await board.exit_raw_repl();
+  return output;
+}
+
+export { extractREPLMessage, executePythonFile, fileOrDirectoryExists, writeFile, ensureDirectoryExists, getPromptWithTimeout };
