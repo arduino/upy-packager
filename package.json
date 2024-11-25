@@ -27,6 +27,8 @@
     "express": "^4.19.2",
     "fs-extra": "^11.2.0",
     "micropython.js": "github:arduino/micropython.js",
+    "p-timeout": "^6.1.3",
+    "serialport": "^12.0.0",
     "tar": "^7.4.3"
   }
 }
