@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import path from 'path';
 import fs from 'fs';
-import { extractREPLMessage, fileOrDirectoryExists, writeFile, getPromptWithTimeout } from './micropython-extensions.js';
+import { extractREPLMessage, fileOrDirectoryExists, writeFile, getPromptWithTimeout, ensureDirectoryExists } from './micropython-extensions.js';
 import MicroPythonBoard from 'micropython.js';
 
 // Define __dirname for ES6 modules
@@ -155,6 +155,7 @@ class PackageInstaller {
       throw new Error('Failed to import extract_archive.py. Output: ' + output);
     }
 
+    await ensureDirectoryExists(this.board, this.libraryPath);
     await this.board.enter_raw_repl();
     const command = `untar('${archiveFilePath}', '${this.libraryPath}')`;
     output = extractREPLMessage(await this.board.exec_raw(command))
