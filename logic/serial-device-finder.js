@@ -56,7 +56,7 @@ export class SerialDeviceFinder {
             }
 
             const newDevice = new SerialDevice(vendorID, productID, portPath, serialNumber);
-            newDevice.manufacturer = port.manufacturer;
+            newDevice.manufacturer = port.manufacturer ?? "Unknown";
             newDevice.name = `Generic Device`; // Fallback name
             devices.push(newDevice);
         }
