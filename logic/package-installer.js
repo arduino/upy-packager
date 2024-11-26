@@ -92,7 +92,7 @@ class PackageInstaller {
 
     if (output.includes('OSError:')) {
       const errorMessage = output.match(/OSError: \[.*\] .*/)[0];
-      throw new Error(`Failed to delete existing package folder. ${errorMessage}`);
+      throw new Error(`Failed to delete existing package folder ${packageFolder}. ${errorMessage}`);
     }
   }
 
