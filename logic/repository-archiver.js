@@ -145,7 +145,8 @@ class RepositoryArchiver {
     await pipe(response.body, writer);
 
     if (processFileCallback) {  
-      const basePath = filePath.replace(targetRelativePath, '');      
+      const targetRelativePathPlatform = targetRelativePath.replace(/\//g, path.sep);
+      const basePath = filePath.replace(targetRelativePathPlatform, '');      
       const newFilePath = await processFileCallback(filePath, basePath);
       if (newFilePath && filePath !== newFilePath) {
         // If the processed file has a different path
