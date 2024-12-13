@@ -17,8 +17,8 @@ class MPyCrossCompiler {
      * @returns {string} The path to the mpy-cross compiler binary or null if the binary does not exist
      */
     getCompilerBinaryPath(){
-        let binaryPath = path.join(__dirname, `../bin/${platform}/mpy-cross`);
-        if(platform === 'win32'){
+        let binaryPath = path.join(__dirname, `../bin/${platform()}/mpy-cross`);
+        if(platform() === 'win32'){
             binaryPath += '.exe';
         }
         // Check if file exists
