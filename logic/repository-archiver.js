@@ -257,7 +257,7 @@ class RepositoryArchiver {
 
     try {
       if (!response.ok) {
-        throw new Error(`Failed to fetch package index: ${response.statusText}`);
+        throw new Error(response.statusText);
       }
       packageJson = await response.json();
     } catch (error) {
