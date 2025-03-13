@@ -7,18 +7,18 @@
         {
             "type": "node",
             "request": "launch",
-            "name": "Test Install",
+            "name": "Run Current Test Script",
             "skipFiles": [
                 "<node_internals>/**"
             ],
-            "program": "${workspaceFolder}/test/install-test.js",
+            "program": "${workspaceFolder}/${relativeFile}",
             "args": [
                 // "https://github.com/arduino/arduino-iot-cloud-py",
-                "https://github.com/arduino/arduino-iot-cloud-py/",
+                // "https://github.com/arduino/arduino-iot-cloud-py/",
                 // "https://github.com/arduino/arduino-iot-cloud-py/package.json",
                 // "https://github.com/arduino/arduino-iot-cloud-py/src/arduino_iot_cloud/ucloud.py",
                 // "ssd1306",
-                "/dev/cu.usbmodem1101"
+                // "/dev/cu.usbmodem1101"
             ]
         },
         {
