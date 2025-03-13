@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import path from 'path';
 import fs from 'fs';
-import { extractREPLMessage, fileOrDirectoryExists, writeFile, getPromptWithTimeout, ensureDirectoryExists } from './micropython-extensions.js';
+import { extractREPLMessage, fileOrDirectoryExists, writeFile, getPromptWithTimeout, ensureDirectoryExists, getLibrariesSystemPath } from './micropython-extensions.js';
 import MicroPythonBoard from 'micropython.js';
 
 // Define __dirname for ES6 modules
@@ -19,10 +19,11 @@ class PackageInstaller {
   /**
    * Constructs a new PackageInstaller instance
    * @param {MicroPythonBoard} board The MicroPython board instance to use.
-   * @param {string} libraryPath The path to the library folder on the board. Defaults to 'lib'.
+   * @param {string} libraryPath The path to the library folder on the board. 
+   * If not provided, the default library path will be determined and used at installation time.
    * This class assumes that the board's port is already open.
    */
-  constructor(board, libraryPath = "lib") {
+  constructor(board, libraryPath = null) {
     this.board = board;
     this.libraryPath = libraryPath;
   }
@@ -65,6 +66,23 @@ class PackageInstaller {
   }
 
   /**
+   * Gets the library path on the board that was either provided
+   * through the constructor or determined when calling this method the first time.
+   * @returns {Promise<string>} The library path on the board.
+   */
+  async getLibrariesPath() {
+    if (this.libraryPath === null) {
+      this.libraryPath = await getLibrariesSystemPath(this.board);
+      if(this.libraryPath === null) {
+        // As a last resort, use a default library path that is commonly used on MicroPython boards
+        // It will be created if it doesn't exist at installation time
+        this.libraryPath = '/lib';
+      }
+    }
+    return this.libraryPath;
+  }
+
+  /**
    * Determines if the given package folder or file exists on the board.
    * Please note that the package name and the package folder name are not necessarily the same.
    * The package folder is the folder where the package is extracted to.
@@ -73,7 +91,8 @@ class PackageInstaller {
    * @returns {Promise<boolean>} True if the package folder exists, false otherwise
    */
   async packageExists(packagePath) {
-    return fileOrDirectoryExists(this.board, path.posix.join(this.libraryPath, packagePath));
+    const libPath = await this.getLibrariesPath();
+    return fileOrDirectoryExists(this.board, path.posix.join(libPath, packagePath));
   }
 
   /**
@@ -86,7 +105,8 @@ class PackageInstaller {
     await getPromptWithTimeout(this.board);
     await this.board.execfile(path.join(__dirname, "python", 'remove_directory.py'));
     await this.board.enter_raw_repl();
-    const targetDirectory = path.posix.join(this.libraryPath, packageFolder);
+    const libPath = await this.getLibrariesPath();
+    const targetDirectory = path.posix.join(libPath, packageFolder);
     const output = extractREPLMessage(await this.board.exec_raw(`remove_directory_recursive('${targetDirectory}')`));
     await this.board.exit_raw_repl()
 
@@ -155,9 +175,10 @@ class PackageInstaller {
       throw new Error('Failed to import extract_archive.py. Output: ' + output);
     }
 
-    await ensureDirectoryExists(this.board, this.libraryPath);
+    const libPath = await this.getLibrariesPath();
+    await ensureDirectoryExists(this.board, libPath);
     await this.board.enter_raw_repl();
-    const command = `untar('${archiveFilePath}', '${this.libraryPath}')`;
+    const command = `untar('${archiveFilePath}', '${libPath}')`;
     output = extractREPLMessage(await this.board.exec_raw(command))
     await this.board.exit_raw_repl()
 

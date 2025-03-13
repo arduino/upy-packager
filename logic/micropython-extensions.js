@@ -32,7 +32,7 @@ async function getPromptWithTimeout(board, timeout = 3000) {
 function extractREPLMessage(out, stripTrailingLinebreak = true) {
     /*
      * Message ($msg) will come out following this template:
-     * "OK${msg}\x04${err}\x04>"
+     * "OK${msg}\x04${err}\x04>" (x04 is END OF TRANSMISSION)
      */
     let output = out.slice(2, -3)
     if (stripTrailingLinebreak && output.endsWith('\r\n')) {
@@ -188,4 +188,24 @@ async function ensureDirectoryExists(board, dirPath) {
   return output;
 }
 
-export { extractREPLMessage, executePythonFile, fileOrDirectoryExists, writeFile, ensureDirectoryExists, getPromptWithTimeout };
+/**
+ * Retrieves the path to the lib directory on the board
+ * @param {MicroPythonBoard} board The MicroPython board instance
+ * @returns {Promise<string>} The path to the lib directory e.g. "/lib"
+ * or null if the lib directory does not exist
+ */
+async function getLibrariesSystemPath(board){
+  await getPromptWithTimeout(board);
+  await board.enter_raw_repl();
+  let command =  `import sys\n`;
+      command += `for path in sys.path:\n`;
+      command += `    if "/lib" in path:\n`;
+      command += `        print(path)\n`;
+      command += `        break\n`;
+  const rawOutput = await board.exec_raw(command);
+  const output = extractREPLMessage(rawOutput);
+  await board.exit_raw_repl();
+  return output === "" ? null : output;
+}
+
+export { getLibrariesSystemPath, extractREPLMessage, executePythonFile, fileOrDirectoryExists, writeFile, ensureDirectoryExists, getPromptWithTimeout };
