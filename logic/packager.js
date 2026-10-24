@@ -30,15 +30,15 @@ class Packager {
      * When set to true, an existing package folder with the same name will be deleted before installing the new package.
      */
     constructor(serialPortOrBoard, compileFiles = true, overwriteExisting = true) {
-        if (serialPortOrBoard instanceof MicroPythonBoard) {
-            this.board = serialPortOrBoard;
-            this.serialPort = null;
-            this.externalBoard = true;
-        } else {
-            this.serialPort = serialPortOrBoard;
-            this.board = new MicroPythonBoard();
-            this.externalBoard = false;
-        }
+          if (typeof serialPortOrBoard === 'string') {
+              this.serialPort = serialPortOrBoard;
+              this.board = new MicroPythonBoard();
+              this.externalBoard = false;
+          } else {
+              this.board = serialPortOrBoard;
+              this.serialPort = null;
+              this.externalBoard = true;
+          }
         this.compileFiles = compileFiles;
         this.overwriteExisting = overwriteExisting;
     }
