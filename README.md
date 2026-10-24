@@ -54,6 +54,15 @@ const customPackageJson = {
 packager.packageAndInstall(repositoryUrl, null, customPackageJson)
 ```
 
+#### Using an Already-Open Board
+
+If the serial port is already open (e.g. when integrating into an editor), you can pass an existing `MicroPythonBoard` instance directly. The `Packager` will use it as-is and will not open or close the port:
+
+```js
+const packager = new Packager(existingBoard);
+await packager.packageAndInstall("https://github.com/arduino/arduino-modulino-mpy");
+```
+
 #### Compilation
 
 By default Python files will be compiled for the architecture and file format suitable for the connected board. If you prefer to skip compilation you can configure this in the constructor of the Packager object:

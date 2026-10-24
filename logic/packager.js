@@ -21,15 +21,24 @@ class Packager {
 
     /**
      * Create a new Packager instance
-     * @param {string} serialPort The serial port to communicate with the board
+     * @param {string|MicroPythonBoard} serialPortOrBoard The serial port string to connect to,
+     * or an already-open MicroPythonBoard instance. When a board instance is provided,
+     * the port will not be opened or closed by this class.
      * @param {boolean} compileFiles Whether to compile the files for the board. Defaults to true.
      * If set to false, the files will be packaged as is without compilation.
      * @param {boolean} overwriteExisting Whether to overwrite existing files on the board. Defaults to true.
      * When set to true, an existing package folder with the same name will be deleted before installing the new package.
      */
-    constructor(serialPort, compileFiles = true, overwriteExisting = true) {
-        this.serialPort = serialPort;
-        this.board = new MicroPythonBoard();
+    constructor(serialPortOrBoard, compileFiles = true, overwriteExisting = true) {
+        if (serialPortOrBoard instanceof MicroPythonBoard) {
+            this.board = serialPortOrBoard;
+            this.serialPort = null;
+            this.externalBoard = true;
+        } else {
+            this.serialPort = serialPortOrBoard;
+            this.board = new MicroPythonBoard();
+            this.externalBoard = false;
+        }
         this.compileFiles = compileFiles;
         this.overwriteExisting = overwriteExisting;
     }
@@ -98,15 +107,15 @@ class Packager {
         let mpyFormat = null;
         version = version || "HEAD";
 
-        try {            
-            if(!this.board.serial?.isOpen) {
+        try {
+            if(!this.externalBoard && !this.board.serial?.isOpen) {
                 await this.board.open(this.serialPort);
             }
             console.debug(`🔧 Creating archive from ${repositoryUrl}...`);
 
             // If the files need to be compiled, get the architecture and mpy file format
             // Not specifying those will result in the compilation being skipped.
-            if(this.compileFiles) {         
+            if(this.compileFiles) {
                 architecture = await getArchitectureFromBoard(this.board);
                 mpyFormat = await getMPyFileFormatFromBoard(this.board);
             }
@@ -116,7 +125,7 @@ class Packager {
         } catch (error) {
             throw new Error(`Couldn't package archive: ${error.message}`);
         } finally {
-            if(closePort) await this.board.close();
+            if(!this.externalBoard && closePort) await this.board.close();
         }
 
         return archiveResult;
@@ -134,13 +143,13 @@ class Packager {
      * This parameter is optional. If not provided, the package.json file from the repository will be used.
      */
     async packageAndInstall(repositoryUrl, version = null, customPackageJson = null) {
-        if(!this.board.serial?.isOpen) {
+        if(!this.externalBoard && !this.board.serial?.isOpen) {
             await this.board.open(this.serialPort);
         }
 
         version = version || "HEAD";
         let tarFilePath;
-        
+
         try {
             const archiveResult = await this.package(repositoryUrl, version, customPackageJson, false);
             const packageFiles = archiveResult.packageFiles;
@@ -156,7 +165,7 @@ class Packager {
                 console.debug('🧹 Cleaning up local archive file...');
                 fs.removeSync(tarFilePath);
             }
-            await this.board.close();
+            if(!this.externalBoard) await this.board.close();
         }
     }
 }
