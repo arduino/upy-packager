@@ -166,6 +166,7 @@ class Packager {
                 fs.removeSync(tarFilePath);
             }
             if(!this.externalBoard) await this.board.close();
+            console.debug('✅ Done');
         }
     }
 }
