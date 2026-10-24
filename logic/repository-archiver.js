@@ -217,9 +217,16 @@ class RepositoryArchiver {
    * @returns {Array} An array of package.json objects containing the URLs and dependencies.
    * @throws {Error} If an error occurs during the download process.
    */
-  async downloadFilesFromUrl(url, version, targetDirectory, customPackageJson = null, processFileCallback = null) {
+  async downloadFilesFromUrl(url, version, targetDirectory, customPackageJson = null, processFileCallback = null, visitedPackages = new Set()) {
+    const packageKey = `${url}@${version ?? 'HEAD'}`;
+    if (visitedPackages.has(packageKey)) {
+      console.debug(`⏭ Skipping already-downloaded package: ${packageKey}`);
+      return [];
+    }
+    visitedPackages.add(packageKey);
+
     let packageJsonFiles = [];
-    let packageJson  
+    let packageJson
     if (isCustomPackage(url)) {
       packageJson = await this.downloadFilesFromRepository(url, version, targetDirectory, customPackageJson, processFileCallback);
     } else {
@@ -230,8 +237,8 @@ class RepositoryArchiver {
     if (packageJson.deps) {
       for (const dep of packageJson.deps) {
         const [depUrl, depVersion] = dep;
-        const depPackageJsonFiles = await this.downloadFilesFromUrl(depUrl, depVersion, targetDirectory, null, processFileCallback); 
-        packageJsonFiles.push(...depPackageJsonFiles);        
+        const depPackageJsonFiles = await this.downloadFilesFromUrl(depUrl, depVersion, targetDirectory, null, processFileCallback, visitedPackages);
+        packageJsonFiles.push(...depPackageJsonFiles);
       }
     }
     return packageJsonFiles;
