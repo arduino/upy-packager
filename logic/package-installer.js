@@ -178,9 +178,23 @@ class PackageInstaller {
     const libPath = await this.getLibrariesPath();
     await ensureDirectoryExists(this.board, libPath);
     await this.board.enter_raw_repl();
-    const command = `untar('${archiveFilePath}', '${libPath}')`;
+    const command = `untar('${archiveFilePath}', '${libPath}', False)`;
     output = extractREPLMessage(await this.board.exec_raw(command))
     await this.board.exit_raw_repl()
+
+    if (output.includes('ImportError') && output.includes('deflate')) {
+      throw new MicroPythonBoard.MicroPythonError(
+        'deflate module not available on this board. Firmware >= 1.21 required.',
+        MicroPythonBoard.MicroPythonError.BOARD_ERROR
+      );
+    }
+
+    if (output.includes('AttributeError') && output.includes('Streaming extraction not supported')) {
+      throw new MicroPythonBoard.MicroPythonError(
+        'Streaming extraction not supported on this board. Firmware >= 1.21 required.',
+        MicroPythonBoard.MicroPythonError.BOARD_ERROR
+      );
+    }
 
     if (output.includes('[Errno 17] EEXIST')) {
       // Find out which folders already exist from the output e.g. 'Creating directory lib/arduino_iot_cloud\r\n'
